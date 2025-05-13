@@ -1,0 +1,14 @@
+import { getJobApplications, getUserDetails } from "@/lib/supabase-server"
+import DashboardOverview from "@/components/dashboard/dashboard-overview"
+
+export default async function DashboardPage() {
+  const applications = await getJobApplications()
+  const userDetails = await getUserDetails()
+
+  return (
+    <div className="container py-6">
+      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+      <DashboardOverview applications={applications} userDetails={userDetails} />
+    </div>
+  )
+}

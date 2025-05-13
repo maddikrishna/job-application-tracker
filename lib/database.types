@@ -1,0 +1,215 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: {
+          id: string
+          email: string
+          full_name: string | null
+          avatar_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          email: string
+          full_name?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          full_name?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      job_applications: {
+        Row: {
+          id: string
+          user_id: string
+          job_title: string
+          company_name: string
+          job_description: string | null
+          job_url: string | null
+          status: string
+          source: string
+          applied_date: string
+          last_updated: string
+          notes: string | null
+          salary_range: string | null
+          location: string | null
+          remote: boolean | null
+          contact_info: Json | null
+          is_favorite: boolean | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          job_title: string
+          company_name: string
+          job_description?: string | null
+          job_url?: string | null
+          status?: string
+          source: string
+          applied_date?: string
+          last_updated?: string
+          notes?: string | null
+          salary_range?: string | null
+          location?: string | null
+          remote?: boolean | null
+          contact_info?: Json | null
+          is_favorite?: boolean | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          job_title?: string
+          company_name?: string
+          job_description?: string | null
+          job_url?: string | null
+          status?: string
+          source?: string
+          applied_date?: string
+          last_updated?: string
+          notes?: string | null
+          salary_range?: string | null
+          location?: string | null
+          remote?: boolean | null
+          contact_info?: Json | null
+          is_favorite?: boolean | null
+        }
+      }
+      application_status_history: {
+        Row: {
+          id: string
+          application_id: string
+          status: string
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          application_id: string
+          status: string
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          application_id?: string
+          status?: string
+          notes?: string | null
+          created_at?: string
+        }
+      }
+      email_integrations: {
+        Row: {
+          id: string
+          user_id: string
+          provider: string
+          credentials: Json
+          is_active: boolean | null
+          last_sync: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider: string
+          credentials: Json
+          is_active?: boolean | null
+          last_sync?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          provider?: string
+          credentials?: Json
+          is_active?: boolean | null
+          last_sync?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      platform_integrations: {
+        Row: {
+          id: string
+          user_id: string
+          platform: string
+          credentials: Json
+          is_active: boolean | null
+          last_sync: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          platform: string
+          credentials: Json
+          is_active?: boolean | null
+          last_sync?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          platform?: string
+          credentials?: Json
+          is_active?: boolean | null
+          last_sync?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      application_emails: {
+        Row: {
+          id: string
+          user_id: string
+          application_id: string
+          email_id: string
+          subject: string
+          sender: string
+          received_at: string
+          content: string
+          category: string
+          metadata: Json | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          application_id: string
+          email_id: string
+          subject: string
+          sender: string
+          received_at: string
+          content: string
+          category: string
+          metadata?: Json | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          application_id?: string
+          email_id?: string
+          subject?: string
+          sender?: string
+          received_at?: string
+          content?: string
+          category?: string
+          metadata?: Json | null
+        }
+      }
+    }
+  }
+}
