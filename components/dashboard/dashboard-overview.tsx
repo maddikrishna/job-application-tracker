@@ -282,7 +282,7 @@ export default function DashboardOverview({ applications: initialApplications, u
                   <div className="h-2.5 w-2.5 rounded-full bg-red-500"></div>
                   <span className="font-medium">Email Integration</span>
                 </div>
-                <Link href="/dashboard/settings?tab=email-setup">
+                <Link href="/dashboard/settings/integrations">
                   <Button variant="outline" size="sm">
                     Configure
                   </Button>

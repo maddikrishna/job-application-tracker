@@ -60,20 +60,6 @@ export default function SettingsPage({
     }
   }
 
-  const handleConnectGmail = () => {
-    try {
-      // Use a simple window.location.href to navigate to the OAuth endpoint
-      window.location.href = "/api/auth/gmail"
-    } catch (error) {
-      console.error("Error navigating to Gmail OAuth:", error)
-      toast({
-        title: "Error",
-        description: "Failed to connect to Gmail. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }
-
   return (
     <Tabs defaultValue="account" className="space-y-4">
       <TabsList>
@@ -155,8 +141,8 @@ export default function SettingsPage({
                   </p>
                 </div>
               </div>
-              <Button variant="outline" onClick={handleConnectGmail}>
-                {emailIntegrations.some((i) => i.provider === "gmail") ? "Manage" : "Connect with Google"}
+              <Button variant="outline" onClick={() => document.getElementById("email-setup-tab")?.click()}>
+                {emailIntegrations.some((i) => i.provider === "gmail") ? "Manage" : "Connect"}
               </Button>
             </div>
             <Separator />
