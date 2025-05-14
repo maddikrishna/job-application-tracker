@@ -36,17 +36,25 @@ export default function SettingsPage({
 
   // Handle URL parameters for OAuth flow
   useEffect(() => {
+    console.log("🔍 [Settings] Checking URL parameters")
+
     const tab = searchParams?.get("tab")
     const error = searchParams?.get("error")
     const success = searchParams?.get("success")
     const details = searchParams?.get("details")
 
+    console.log(
+      `🔍 [Settings] URL params - tab: ${tab || "None"}, error: ${error || "None"}, success: ${success || "None"}, details: ${details || "None"}`,
+    )
+
     // Set the active tab if specified in URL
     if (tab) {
+      console.log(`🔍 [Settings] Setting active tab to: ${tab}`)
       setActiveTab(tab)
     }
 
     if (error) {
+      console.error(`❌ [Settings] Error from OAuth flow: ${error}${details ? ` (${details})` : ""}`)
       toast({
         title: "Error",
         description: `Failed to connect: ${error}${details ? ` (${details})` : ""}`,
@@ -55,6 +63,7 @@ export default function SettingsPage({
     }
 
     if (success === "gmail_connected") {
+      console.log("✅ [Settings] Gmail connected successfully!")
       toast({
         title: "Success",
         description: "Gmail connected successfully!",
@@ -93,9 +102,12 @@ export default function SettingsPage({
 
   const handleConnectGmail = () => {
     try {
+      console.log("🔍 [OAuth Init] Starting Gmail OAuth connection")
+
       // Create a direct link to Google's OAuth page
       const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
       if (!GOOGLE_CLIENT_ID) {
+        console.error("❌ [OAuth Init] Google OAuth client ID not configured")
         toast({
           title: "Error",
           description: "Google OAuth client ID not configured",
@@ -104,8 +116,11 @@ export default function SettingsPage({
         return
       }
 
+      console.log(`🔍 [OAuth Init] Using client ID: ${GOOGLE_CLIENT_ID.substring(0, 5)}...`)
+
       // Generate a simple state
       const state = Math.random().toString(36).substring(2)
+      console.log(`🔍 [OAuth Init] Generated state: ${state}`)
 
       // Define scopes
       const SCOPES = [
@@ -113,9 +128,11 @@ export default function SettingsPage({
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
       ]
+      console.log(`🔍 [OAuth Init] Using scopes: ${SCOPES.join(", ")}`)
 
       // Use the v0 preview URL for testing
       const redirectUri = "https://kzmje1g3tdu7zw4r1lps.lite.vusercontent.net/api/auth/gmail/callback"
+      console.log(`🔍 [OAuth Init] Using redirect URI: ${redirectUri}`)
 
       // Construct the Google OAuth authorization URL
       const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
@@ -127,10 +144,13 @@ export default function SettingsPage({
       authUrl.searchParams.append("prompt", "consent")
       authUrl.searchParams.append("state", state)
 
+      console.log(`🔍 [OAuth Init] Auth URL created: ${authUrl.toString().substring(0, 100)}...`)
+      console.log("✅ [OAuth Init] Redirecting to Google's OAuth page")
+
       // Redirect to Google's OAuth page
       window.location.href = authUrl.toString()
     } catch (error) {
-      console.error("Error navigating to Gmail OAuth:", error)
+      console.error(`❌ [OAuth Init] Error navigating to Gmail OAuth: ${error}`)
       toast({
         title: "Error",
         description: "Failed to connect to Gmail. Please try again.",
