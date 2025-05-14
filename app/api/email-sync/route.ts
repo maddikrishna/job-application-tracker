@@ -27,7 +27,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, processedCount: result.processedCount })
+    return NextResponse.json({
+      success: true,
+      processedCount: result.processedCount,
+      jobRelatedCount: result.jobRelatedCount,
+      newApplications: result.newApplications,
+      updatedApplications: result.updatedApplications,
+    })
   } catch (error) {
     console.error("Error syncing emails:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

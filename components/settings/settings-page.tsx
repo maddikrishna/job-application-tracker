@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import type { User } from "@supabase/supabase-js"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,6 +31,36 @@ export default function SettingsPage({
   const { supabase } = useSupabase()
   const [fullName, setFullName] = useState(userDetails?.full_name || "")
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState("account")
+
+  // Handle URL parameters for OAuth flow
+  useEffect(() => {
+    const tab = searchParams?.get("tab")
+    const error = searchParams?.get("error")
+    const success = searchParams?.get("success")
+    const details = searchParams?.get("details")
+
+    // Set the active tab if specified in URL
+    if (tab) {
+      setActiveTab(tab)
+    }
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: `Failed to connect: ${error}${details ? ` (${details})` : ""}`,
+        variant: "destructive",
+      })
+    }
+
+    if (success === "gmail_connected") {
+      toast({
+        title: "Success",
+        description: "Gmail connected successfully!",
+      })
+    }
+  }, [searchParams])
 
   const handleUpdateProfile = async () => {
     setIsUpdatingProfile(true)
@@ -60,8 +91,56 @@ export default function SettingsPage({
     }
   }
 
+  const handleConnectGmail = () => {
+    try {
+      // Create a direct link to Google's OAuth page
+      const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+      if (!GOOGLE_CLIENT_ID) {
+        toast({
+          title: "Error",
+          description: "Google OAuth client ID not configured",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Generate a simple state
+      const state = Math.random().toString(36).substring(2)
+
+      // Define scopes
+      const SCOPES = [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+      ]
+
+      // Use the v0 preview URL for testing
+      const redirectUri = "https://kzmje1g3tdu7zw4r1lps.lite.vusercontent.net/api/auth/gmail/callback"
+
+      // Construct the Google OAuth authorization URL
+      const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
+      authUrl.searchParams.append("client_id", GOOGLE_CLIENT_ID)
+      authUrl.searchParams.append("redirect_uri", redirectUri)
+      authUrl.searchParams.append("response_type", "code")
+      authUrl.searchParams.append("scope", SCOPES.join(" "))
+      authUrl.searchParams.append("access_type", "offline")
+      authUrl.searchParams.append("prompt", "consent")
+      authUrl.searchParams.append("state", state)
+
+      // Redirect to Google's OAuth page
+      window.location.href = authUrl.toString()
+    } catch (error) {
+      console.error("Error navigating to Gmail OAuth:", error)
+      toast({
+        title: "Error",
+        description: "Failed to connect to Gmail. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
-    <Tabs defaultValue="account" className="space-y-4">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
       <TabsList>
         <TabsTrigger value="account">Account</TabsTrigger>
         <TabsTrigger value="integrations">Integrations</TabsTrigger>
@@ -79,7 +158,7 @@ export default function SettingsPage({
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" value={user.email} disabled />
+              <Input id="email" value={user?.email || ""} disabled />
             </div>
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
@@ -137,12 +216,12 @@ export default function SettingsPage({
                 <div>
                   <p className="font-medium">Gmail</p>
                   <p className="text-sm text-muted-foreground">
-                    {emailIntegrations.some((i) => i.provider === "gmail") ? "Connected" : "Not connected"}
+                    {emailIntegrations?.some((i) => i.provider === "gmail") ? "Connected" : "Not connected"}
                   </p>
                 </div>
               </div>
-              <Button variant="outline" onClick={() => document.getElementById("email-setup-tab")?.click()}>
-                {emailIntegrations.some((i) => i.provider === "gmail") ? "Manage" : "Connect"}
+              <Button variant="outline" onClick={handleConnectGmail}>
+                {emailIntegrations?.some((i) => i.provider === "gmail") ? "Manage" : "Connect with Google"}
               </Button>
             </div>
             <Separator />
@@ -171,12 +250,12 @@ export default function SettingsPage({
                 <div>
                   <p className="font-medium">LinkedIn</p>
                   <p className="text-sm text-muted-foreground">
-                    {platformIntegrations.some((i) => i.platform === "linkedin") ? "Connected" : "Not connected"}
+                    {platformIntegrations?.some((i) => i.platform === "linkedin") ? "Connected" : "Not connected"}
                   </p>
                 </div>
               </div>
               <Button variant="outline">
-                {platformIntegrations.some((i) => i.platform === "linkedin") ? "Disconnect" : "Connect"}
+                {platformIntegrations?.some((i) => i.platform === "linkedin") ? "Disconnect" : "Connect"}
               </Button>
             </div>
             <Separator />

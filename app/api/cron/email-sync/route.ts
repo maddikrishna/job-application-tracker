@@ -53,6 +53,9 @@ export async function GET() {
           userId: integration.user_id,
           success: result.success,
           processedCount: result.processedCount,
+          jobRelatedCount: result.jobRelatedCount,
+          newApplications: result.newApplications,
+          updatedApplications: result.updatedApplications,
         })
       }
     }

@@ -31,36 +31,185 @@ export class GmailProvider implements EmailProvider {
   }
 
   async connect(credentials: any): Promise<boolean> {
-    // In a real implementation, this would use OAuth2 to connect to Gmail API
     this.credentials = credentials
     this.accessToken = credentials.access_token
+
+    // Check if the token is expired and refresh if needed
+    const now = Math.floor(Date.now() / 1000)
+    if (credentials.issued_at && credentials.expires_in && now > credentials.issued_at + credentials.expires_in - 300) {
+      // Token is expired or will expire soon, refresh it
+      try {
+        const response = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            client_id: process.env.GOOGLE_CLIENT_ID || "",
+            client_secret: process.env.GOOGLE_CLIENT_SECRET || "",
+            refresh_token: credentials.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        })
+
+        const data = await response.json()
+
+        if (response.ok) {
+          this.accessToken = data.access_token
+
+          // Update the stored credentials with the new token
+          this.credentials = {
+            ...this.credentials,
+            access_token: data.access_token,
+            expires_in: data.expires_in,
+            issued_at: Math.floor(Date.now() / 1000),
+          }
+
+          // Return the updated credentials for storage
+          return true
+        } else {
+          console.error("Failed to refresh token:", data)
+          return false
+        }
+      } catch (error) {
+        console.error("Error refreshing token:", error)
+        return false
+      }
+    }
+
     return true
   }
 
   async fetchEmails(since?: Date, maxResults = 50): Promise<EmailData[]> {
-    // In a real implementation, this would use Gmail API to fetch emails
-    // For now, we'll return mock data
-    return [
-      {
-        id: "email1",
-        subject: "Your application for Software Engineer at Google",
-        sender: "recruiting@google.com",
-        receivedAt: new Date(),
-        content: "Thank you for applying to the Software Engineer position at Google...",
-      },
-      {
-        id: "email2",
-        subject: "Interview Request: Software Developer Position",
-        sender: "hr@microsoft.com",
-        receivedAt: new Date(Date.now() - 86400000), // 1 day ago
-        content: "We've reviewed your application and would like to schedule an interview...",
-      },
-    ]
+    try {
+      // Construct the Gmail API query
+      let query = "category:primary"
+      if (since) {
+        const sinceDate = since.toISOString().split("T")[0] // Format as YYYY-MM-DD
+        query += ` after:${sinceDate}`
+      }
+
+      // Make the API call to Gmail
+      const response = await fetch(
+        `https://www.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${maxResults}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+          },
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`Gmail API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      if (!data.messages || data.messages.length === 0) {
+        return []
+      }
+
+      // Fetch details for each message
+      const emails: EmailData[] = []
+
+      for (const message of data.messages.slice(0, maxResults)) {
+        try {
+          const messageResponse = await fetch(
+            `https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=full`,
+            {
+              headers: {
+                Authorization: `Bearer ${this.accessToken}`,
+              },
+            },
+          )
+
+          if (!messageResponse.ok) {
+            console.error(`Error fetching message ${message.id}: ${messageResponse.status}`)
+            continue
+          }
+
+          const messageData = await messageResponse.json()
+
+          // Extract headers
+          const headers = messageData.payload.headers
+          const subject = headers.find((h: any) => h.name === "Subject")?.value || "No Subject"
+          const from = headers.find((h: any) => h.name === "From")?.value || ""
+          const date = headers.find((h: any) => h.name === "Date")?.value
+
+          // Extract content
+          let content = ""
+
+          // Function to extract text from parts recursively
+          const extractText = (part: any) => {
+            if (part.mimeType === "text/plain" && part.body.data) {
+              content += Buffer.from(part.body.data, "base64").toString("utf-8")
+            } else if (part.parts) {
+              part.parts.forEach(extractText)
+            }
+          }
+
+          if (messageData.payload.body.data) {
+            content = Buffer.from(messageData.payload.body.data, "base64").toString("utf-8")
+          } else if (messageData.payload.parts) {
+            messageData.payload.parts.forEach(extractText)
+          }
+
+          emails.push({
+            id: message.id,
+            subject,
+            sender: from,
+            receivedAt: date ? new Date(date) : new Date(),
+            content,
+          })
+        } catch (error) {
+          console.error(`Error processing message ${message.id}:`, error)
+        }
+      }
+
+      return emails
+    } catch (error) {
+      console.error("Error fetching emails:", error)
+      return []
+    }
   }
 
   async getEmailContent(emailId: string): Promise<string> {
-    // In a real implementation, this would fetch the full email content
-    return "Thank you for applying to the Software Engineer position at Google. We have received your application and will review it shortly."
+    try {
+      const response = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages/${emailId}?format=full`, {
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Gmail API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      // Extract content
+      let content = ""
+
+      // Function to extract text from parts recursively
+      const extractText = (part: any) => {
+        if (part.mimeType === "text/plain" && part.body.data) {
+          content += Buffer.from(part.body.data, "base64").toString("utf-8")
+        } else if (part.parts) {
+          part.parts.forEach(extractText)
+        }
+      }
+
+      if (data.payload.body.data) {
+        content = Buffer.from(data.payload.body.data, "base64").toString("utf-8")
+      } else if (data.payload.parts) {
+        data.payload.parts.forEach(extractText)
+      }
+
+      return content
+    } catch (error) {
+      console.error("Error fetching email content:", error)
+      return ""
+    }
   }
 
   async getAttachments(emailId: string): Promise<any[]> {
@@ -110,6 +259,10 @@ export async function syncUserEmails(userId: string, integrationId: string) {
     const emails = await provider.fetchEmails(since)
 
     // Process each email
+    let processedCount = 0
+    let newApplications = 0
+    let updatedApplications = 0
+
     for (const email of emails) {
       // Get full email content if needed
       if (!email.content) {
@@ -120,6 +273,8 @@ export async function syncUserEmails(userId: string, integrationId: string) {
       const result = await processEmailWithAI(email, userId)
 
       if (result.isJobRelated) {
+        processedCount++
+
         // Check if this email is related to an existing application
         let applicationId: string | null = null
 
@@ -177,6 +332,7 @@ export async function syncUserEmails(userId: string, integrationId: string) {
           }
 
           applicationId = newApp.id
+          newApplications++
         }
 
         // Store the email
@@ -209,6 +365,8 @@ export async function syncUserEmails(userId: string, integrationId: string) {
               status: result.suggestedStatus,
               notes: `Status updated based on email: ${email.subject}`,
             })
+
+            updatedApplications++
           }
         }
       }
@@ -223,7 +381,13 @@ export async function syncUserEmails(userId: string, integrationId: string) {
       })
       .eq("id", integrationId)
 
-    return { success: true, processedCount: emails.length }
+    return {
+      success: true,
+      processedCount: emails.length,
+      jobRelatedCount: processedCount,
+      newApplications,
+      updatedApplications,
+    }
   } catch (error) {
     console.error("Error syncing emails:", error)
     return { success: false, error }

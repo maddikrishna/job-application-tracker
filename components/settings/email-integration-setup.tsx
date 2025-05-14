@@ -1,164 +1,75 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useSupabase } from "@/components/supabase-provider"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle, CheckCircle2, Mail, RefreshCw, Settings } from "lucide-react"
+import { useSupabase } from "@/components/supabase-provider"
+import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Mail, Trash2, RefreshCw, AlertTriangle } from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
-
-interface EmailIntegration {
-  id: string
-  provider: string
-  is_active: boolean
-  last_sync: string | null
-  sync_frequency: string
-}
 
 export default function EmailIntegrationSetup() {
-  const router = useRouter()
   const { supabase } = useSupabase()
-  const [integrations, setIntegrations] = useState<EmailIntegration[]>([])
+  const [integrations, setIntegrations] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [provider, setProvider] = useState("gmail")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [syncFrequency, setSyncFrequency] = useState("hourly")
+  const searchParams = useSearchParams()
+
+  // Get error and success messages from URL
+  const error = searchParams?.get("error")
+  const success = searchParams?.get("success")
+  const details = searchParams?.get("details")
 
   useEffect(() => {
-    fetchIntegrations()
-  }, [])
+    const fetchIntegrations = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("email_integrations")
+          .select("*")
+          .order("created_at", { ascending: false })
 
-  // Add this useEffect to check for success or error messages in the URL
-  useEffect(() => {
-    const url = new URL(window.location.href)
-    const success = url.searchParams.get("success")
-    const error = url.searchParams.get("error")
-
-    if (success === "gmail_connected") {
-      toast({
-        title: "Gmail connected successfully",
-        description: "Your Gmail account has been connected for job tracking",
-      })
-      fetchIntegrations()
-
-      // Remove the query parameter
-      url.searchParams.delete("success")
-      window.history.replaceState({}, "", url.toString())
-    }
-
-    if (error) {
-      let errorMessage = "An error occurred while connecting your email account"
-
-      switch (error) {
-        case "missing_code":
-          errorMessage = "Authorization code was missing from the callback"
-          break
-        case "auth_required":
-          errorMessage = "You need to be logged in to connect your email account"
-          break
-        case "db_error":
-          errorMessage = "There was an error storing your email credentials"
-          break
-        case "server_error":
-          errorMessage = "An unexpected server error occurred"
-          break
-      }
-
-      setError(errorMessage)
-
-      // Remove the query parameter
-      url.searchParams.delete("error")
-      window.history.replaceState({}, "", url.toString())
-    }
-  }, [])
-
-  const fetchIntegrations = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/email-integration")
-      const data = await response.json()
-
-      if (data.success) {
-        setIntegrations(data.integrations || [])
-      } else {
-        setError(data.error || "Failed to fetch integrations")
-      }
-    } catch (error) {
-      setError("An unexpected error occurred")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // Update the handleConnect function to use OAuth for Gmail
-  const handleConnect = async () => {
-    setIsConnecting(true)
-    setError(null)
-
-    try {
-      if (provider === "gmail") {
-        // For Gmail, we'll use OAuth 2.0
-        // In a real implementation, this would redirect to Google's OAuth consent screen
-        // For demo purposes, we'll simulate this with a direct redirect
-
-        // Generate a random state parameter for security
-        const state = Math.random().toString(36).substring(2, 15)
-
-        // Store the state in localStorage to verify when the user returns
-        localStorage.setItem("oauth_state", state)
-
-        // Redirect to Google's OAuth consent screen
-        // In a real implementation, you would use proper OAuth parameters
-        const redirectUrl = `/api/auth/gmail/callback`
-        const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(window.location.origin + redirectUrl)}&response_type=code&scope=https://www.googleapis.com/auth/gmail.readonly&state=${state}&access_type=offline&prompt=consent`
-
-        window.location.href = googleAuthUrl
-        return
-      } else {
-        // For other providers, use the existing email/password approach
-        const response = await fetch("/api/email-integration", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            provider,
-            credentials: {
-              email,
-              password, // In a real app, this would be an OAuth token, not a password
-            },
-            syncFrequency,
-          }),
+        if (error) throw error
+        setIntegrations(data || [])
+      } catch (error) {
+        console.error("Error fetching integrations:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load email integrations",
+          variant: "destructive",
         })
-
-        const data = await response.json()
-
-        if (data.success) {
-          toast({
-            title: "Email connected successfully",
-            description: "Your email account has been connected for job tracking",
-          })
-          setEmail("")
-          setPassword("")
-          fetchIntegrations()
-        } else {
-          setError(data.error || "Failed to connect email account")
-        }
+      } finally {
+        setIsLoading(false)
       }
+    }
+
+    fetchIntegrations()
+  }, [supabase])
+
+  const handleDisconnect = async (id: string) => {
+    try {
+      const { error } = await supabase.from("email_integrations").update({ is_active: false }).eq("id", id)
+
+      if (error) throw error
+
+      setIntegrations(
+        integrations.map((integration) => (integration.id === id ? { ...integration, is_active: false } : integration)),
+      )
+
+      toast({
+        title: "Integration disconnected",
+        description: "Email integration has been disconnected",
+      })
     } catch (error) {
-      setError("An unexpected error occurred")
-    } finally {
-      setIsConnecting(false)
+      console.error("Error disconnecting integration:", error)
+      toast({
+        title: "Error",
+        description: "Failed to disconnect integration",
+        variant: "destructive",
+      })
     }
   }
 
@@ -180,9 +91,18 @@ export default function EmailIntegrationSetup() {
       if (data.success) {
         toast({
           title: "Email sync completed",
-          description: `Processed ${data.processedCount} emails`,
+          description: `Processed ${data.processedCount} emails, found ${data.jobRelatedCount || 0} job-related emails`,
         })
-        fetchIntegrations()
+
+        // Refresh integrations to update last_sync time
+        const { data: updatedIntegrations, error } = await supabase
+          .from("email_integrations")
+          .select("*")
+          .order("created_at", { ascending: false })
+
+        if (!error) {
+          setIntegrations(updatedIntegrations || [])
+        }
       } else {
         toast({
           title: "Sync failed",
@@ -201,55 +121,30 @@ export default function EmailIntegrationSetup() {
     }
   }
 
-  const handleDelete = async (integrationId: string) => {
-    try {
-      const response = await fetch(`/api/email-integration?id=${integrationId}`, {
-        method: "DELETE",
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        toast({
-          title: "Integration removed",
-          description: "Your email integration has been removed",
-        })
-        fetchIntegrations()
-      } else {
-        toast({
-          title: "Removal failed",
-          description: data.error || "Failed to remove integration",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Removal failed",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const toggleActive = async (integration: EmailIntegration) => {
+  const updateSyncFrequency = async (integrationId: string, frequency: string) => {
     try {
       const { error } = await supabase
         .from("email_integrations")
-        .update({ is_active: !integration.is_active })
-        .eq("id", integration.id)
+        .update({ sync_frequency: frequency })
+        .eq("id", integrationId)
 
       if (error) throw error
 
-      setIntegrations(integrations.map((i) => (i.id === integration.id ? { ...i, is_active: !i.is_active } : i)))
+      setIntegrations(
+        integrations.map((integration) =>
+          integration.id === integrationId ? { ...integration, sync_frequency: frequency } : integration,
+        ),
+      )
 
       toast({
-        title: integration.is_active ? "Integration paused" : "Integration activated",
-        description: integration.is_active ? "Email tracking has been paused" : "Email tracking has been activated",
+        title: "Sync frequency updated",
+        description: `Email sync frequency set to ${frequency}`,
       })
     } catch (error) {
+      console.error("Error updating sync frequency:", error)
       toast({
-        title: "Update failed",
-        description: "Failed to update integration status",
+        title: "Error",
+        description: "Failed to update sync frequency",
         variant: "destructive",
       })
     }
@@ -261,52 +156,135 @@ export default function EmailIntegrationSetup() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Email Integrations</CardTitle>
-          <CardDescription>Connect your email accounts to automatically track job applications</CardDescription>
+          <CardTitle>Email Integration</CardTitle>
+          <CardDescription>Connect your email account to automatically track job applications</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Show error message if present */}
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                {error === "token_exchange_failed"
+                  ? "Failed to authenticate with Google. Please try again."
+                  : error === "invalid_state"
+                    ? "Security verification failed. Please try again."
+                    : error === "integration_storage_failed"
+                      ? "Failed to save integration. Please try again."
+                      : `An error occurred: ${error}`}
+                {details && <div className="mt-2 text-xs opacity-80">{details}</div>}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Show success message if present */}
+          {success === "gmail_connected" && (
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertTitle className="text-green-800">Success</AlertTitle>
+              <AlertDescription className="text-green-700">
+                Gmail integration connected successfully. Your job application emails will now be automatically tracked.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {isLoading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : integrations.length === 0 ? (
-            <div className="text-center py-4">
-              <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No email accounts connected</h3>
-              <p className="text-muted-foreground mb-4">
-                Connect your email account to automatically track job applications
-              </p>
-            </div>
-          ) : (
+            <div className="py-4 text-center text-muted-foreground">Loading integrations...</div>
+          ) : integrations.length > 0 ? (
             <div className="space-y-4">
               {integrations.map((integration) => (
-                <div key={integration.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="font-medium">{integration.provider.toUpperCase()}</p>
-                      <p className="text-sm text-muted-foreground">Last sync: {formatDate(integration.last_sync)}</p>
+                <div key={integration.id} className="border rounded-lg overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="font-medium">
+                            {integration.provider === "gmail" ? "Gmail" : integration.provider}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {integration.credentials?.email || "Email account"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={integration.is_active}
+                          onCheckedChange={(checked) => {
+                            const { error } = supabase
+                              .from("email_integrations")
+                              .update({ is_active: checked })
+                              .eq("id", integration.id)
+                              .then(() => {
+                                setIntegrations(
+                                  integrations.map((i) => (i.id === integration.id ? { ...i, is_active: checked } : i)),
+                                )
+                                toast({
+                                  title: checked ? "Integration activated" : "Integration paused",
+                                  description: checked
+                                    ? "Email tracking has been activated"
+                                    : "Email tracking has been paused",
+                                })
+                              })
+                              .catch((error) => {
+                                console.error("Error updating integration status:", error)
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to update integration status",
+                                  variant: "destructive",
+                                })
+                              })
+                          }}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => handleSync(integration.id)}
+                          disabled={isSyncing || !integration.is_active}
+                        >
+                          <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => handleDisconnect(integration.id)}>
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch checked={integration.is_active} onCheckedChange={() => toggleActive(integration)} />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleSync(integration.id)}
-                      disabled={isSyncing || !integration.is_active}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={() => handleDelete(integration.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium">Last Sync</p>
+                        <p className="text-sm text-muted-foreground">{formatDate(integration.last_sync)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Sync Frequency</p>
+                        <Select
+                          value={integration.sync_frequency || "hourly"}
+                          onValueChange={(value) => updateSyncFrequency(integration.id, value)}
+                          disabled={!integration.is_active}
+                        >
+                          <SelectTrigger className="h-8 mt-1 w-full">
+                            <SelectValue placeholder="Select frequency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="hourly">Hourly</SelectItem>
+                            <SelectItem value="daily">Daily</SelectItem>
+                            <SelectItem value="manual">Manual Only</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
+            </div>
+          ) : (
+            <div className="py-4 text-center">
+              <p className="text-muted-foreground mb-4">No email integrations found</p>
+              <Button onClick={() => (window.location.href = "/api/auth/gmail")}>Connect Gmail</Button>
             </div>
           )}
         </CardContent>
@@ -314,92 +292,39 @@ export default function EmailIntegrationSetup() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Connect New Email Account</CardTitle>
-          <CardDescription>Add a new email account for job application tracking</CardDescription>
+          <CardTitle>AI Email Processing</CardTitle>
+          <CardDescription>How our AI processes your job application emails</CardDescription>
         </CardHeader>
         <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="provider">Email Provider</Label>
-              <Select value={provider} onValueChange={setProvider}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select provider" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="gmail">Gmail</SelectItem>
-                  <SelectItem value="outlook">Outlook</SelectItem>
-                  <SelectItem value="yahoo">Yahoo Mail</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <p className="text-sm">
+              Our AI system scans your emails to identify job-related communications and automatically:
+            </p>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your.email@example.com"
-              />
-            </div>
+            <ul className="list-disc pl-5 space-y-2 text-sm">
+              <li>Detects application confirmations, interview invitations, offers, and rejections</li>
+              <li>Extracts company names, job titles, and other key information</li>
+              <li>Creates new job application entries when you apply via email</li>
+              <li>Updates existing applications when new communications arrive</li>
+              <li>Organizes all job-related emails in one place for easy reference</li>
+            </ul>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-              <p className="text-xs text-muted-foreground">
-                Note: In a real application, we would use OAuth2 for secure authentication without storing your
-                password.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="syncFrequency">Sync Frequency</Label>
-              <Select value={syncFrequency} onValueChange={setSyncFrequency}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hourly">Hourly</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="manual">Manual Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="rounded-md bg-muted p-4 flex items-start gap-2 mt-4">
-              <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium">How Email Integration Works</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  When connected, our AI will scan your inbox for job application emails. We only access emails related
-                  to job applications and never store your email credentials.
-                </p>
+            <div className="rounded-md bg-blue-50 p-4 mt-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <CheckCircle2 className="h-5 w-5 text-blue-400" aria-hidden="true" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">Privacy First</h3>
+                  <div className="mt-2 text-sm text-blue-700">
+                    <p>
+                      We only process emails related to job applications. Your personal emails remain private and are
+                      never stored or analyzed.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <Button onClick={handleConnect} disabled={isConnecting || !email || !password} className="w-full">
-              {isConnecting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                "Connect Email Account"
-              )}
-            </Button>
           </div>
         </CardContent>
       </Card>
