@@ -130,8 +130,8 @@ export default function SettingsPage({
       ]
       console.log(`🔍 [OAuth Init] Using scopes: ${SCOPES.join(", ")}`)
 
-      // Use the v0 preview URL for testing
-      const redirectUri = "https://kzmje1g3tdu7zw4r1lps.lite.vusercontent.net/api/auth/gmail/callback"
+      // Use the actual deployed URL as the redirect URI
+      const redirectUri = "https://v0-job-application-tracker-drab.vercel.app/api/auth/gmail/callback"
       console.log(`🔍 [OAuth Init] Using redirect URI: ${redirectUri}`)
 
       // Construct the Google OAuth authorization URL

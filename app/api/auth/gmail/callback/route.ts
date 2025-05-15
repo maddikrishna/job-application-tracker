@@ -5,7 +5,7 @@ import { cookies } from "next/headers"
 // Google OAuth configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://v0-job-application-tracker-drab.vercel.app"
 
 export async function GET(request: NextRequest) {
   console.log("🔍 [OAuth Callback] Starting callback processing")
@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
       return Response.redirect(`${APP_URL}/dashboard/settings?error=no_code`, 302)
     }
 
-    // Use the same redirect URI as in the auth route
-    const redirectUri = "https://kzmje1g3tdu7zw4r1lps.lite.vusercontent.net/api/auth/gmail/callback"
+    // Use the actual deployed URL as the redirect URI
+    const redirectUri = "https://v0-job-application-tracker-drab.vercel.app/api/auth/gmail/callback"
     console.log(`🔍 [OAuth Callback] Using redirect URI: ${redirectUri}`)
 
     // Exchange the authorization code for access and refresh tokens

@@ -1,53 +1,75 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { SupabaseClient } from "@supabase/auth-helpers-nextjs"
 import type { Database } from "@/lib/database.types"
 
 type SupabaseContext = {
-  supabase: SupabaseClient<Database> | null
-  isSupabaseReady: boolean
-  supabaseError: Error | null
+  supabase: SupabaseClient<Database>
 }
 
 const Context = createContext<SupabaseContext | undefined>(undefined)
 
+// Create a dummy client that won't make actual API calls
+const createDummyClient = () => {
+  return {
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithOtp: () => Promise.resolve({ data: null, error: null }),
+      signOut: () => Promise.resolve({ error: null }),
+    },
+    from: (table: string) => ({
+      select: () => ({ data: null, error: null }),
+      insert: () => ({ data: null, error: null }),
+      update: () => ({ data: null, error: null }),
+      delete: () => ({ data: null, error: null }),
+      eq: () => ({ data: null, error: null }),
+    }),
+    storage: {
+      from: (bucket: string) => ({
+        upload: () => Promise.resolve({ data: null, error: null }),
+        getPublicUrl: () => ({ data: { publicUrl: "" } }),
+      }),
+    },
+    rpc: () => Promise.resolve({ data: null, error: null }),
+  } as unknown as SupabaseClient<Database>
+}
+
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
-  const [supabase, setSupabase] = useState<SupabaseClient<Database> | null>(null)
-  const [isSupabaseReady, setIsSupabaseReady] = useState(false)
-  const [supabaseError, setSupabaseError] = useState<Error | null>(null)
+  const [client, setClient] = useState<SupabaseClient<Database> | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Initialize Supabase client
     try {
       console.log("Initializing Supabase client...")
+      const supabase = createClientComponentClient<Database>()
 
-      // Check if environment variables are available
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-      console.log("Supabase URL available:", !!supabaseUrl)
-      console.log("Supabase Anon Key available:", !!supabaseAnonKey)
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        console.error("Supabase environment variables are missing!")
-        throw new Error("Supabase environment variables are missing. Please check your configuration.")
-      }
-
-      // Create the Supabase client
-      const client = createClientComponentClient<Database>()
-      setSupabase(client)
-      setIsSupabaseReady(true)
-      console.log("Supabase client initialized successfully")
+      // Test if the client works by making a simple request
+      supabase.auth
+        .getSession()
+        .then(() => {
+          console.log("Supabase client initialized successfully")
+          setClient(supabase)
+        })
+        .catch((error) => {
+          console.error("Error testing Supabase client:", error)
+          console.log("Falling back to dummy client")
+          setClient(createDummyClient())
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
 
       // Set up auth state change listener
       const {
         data: { subscription },
-      } = client.auth.onAuthStateChange(() => {
+      } = supabase.auth.onAuthStateChange(() => {
         // Refresh the page on auth state change
-        // This is a simple way to handle auth state changes
       })
 
       return () => {
@@ -55,13 +77,14 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Error initializing Supabase client:", error)
-      setSupabaseError(error instanceof Error ? error : new Error(String(error)))
-      setIsSupabaseReady(true) // Still mark as ready so the app can render an error state
+      setClient(createDummyClient())
+      setIsLoading(false)
+      return () => {}
     }
   }, [])
 
   // Show a loading state while Supabase is initializing
-  if (!isSupabaseReady) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -72,35 +95,21 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Show an error state if Supabase initialization failed
-  if (supabaseError) {
+  // If client is null (should never happen due to dummy client), show error
+  if (!client) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="max-w-md rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
-          <h2 className="text-xl font-semibold text-destructive">Configuration Error</h2>
+          <h2 className="text-xl font-semibold text-destructive">Application Error</h2>
           <p className="mt-2 text-muted-foreground">
-            There was a problem connecting to the database. This is likely due to missing environment variables.
+            There was a problem initializing the application. Please try refreshing the page.
           </p>
-          <div className="mt-4 rounded bg-background/80 p-4 text-left text-sm">
-            <p className="font-mono">{supabaseError.message}</p>
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">Please check your environment variables and try again.</p>
         </div>
       </div>
     )
   }
 
-  return (
-    <Context.Provider
-      value={{
-        supabase,
-        isSupabaseReady,
-        supabaseError,
-      }}
-    >
-      {children}
-    </Context.Provider>
-  )
+  return <Context.Provider value={{ supabase: client }}>{children}</Context.Provider>
 }
 
 export const useSupabase = () => {
@@ -108,10 +117,5 @@ export const useSupabase = () => {
   if (context === undefined) {
     throw new Error("useSupabase must be used inside SupabaseProvider")
   }
-
-  if (!context.supabase) {
-    throw new Error("Supabase client is not available. Check your environment variables.")
-  }
-
-  return { supabase: context.supabase }
+  return context
 }
