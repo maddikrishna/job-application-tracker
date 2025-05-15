@@ -21,6 +21,8 @@ interface EmailProcessingResult {
 // Function to process an email with AI
 export async function processEmailWithAI(email: EmailData, userId: string): Promise<EmailProcessingResult> {
   try {
+    console.log("Processing email with AI:", email.subject)
+
     // Use AI SDK to analyze the email content
     const { text } = await generateText({
       model: openai("gpt-4o"),
@@ -47,6 +49,8 @@ export async function processEmailWithAI(email: EmailData, userId: string): Prom
         }
       `,
     })
+
+    console.log("AI response received:", text.substring(0, 100) + "...")
 
     // Parse the AI response
     try {
@@ -85,6 +89,8 @@ export async function processEmailWithAI(email: EmailData, userId: string): Prom
 
 // Fallback function using pattern matching
 function fallbackEmailProcessing(email: EmailData): EmailProcessingResult {
+  console.log("Using fallback email processing for:", email.subject)
+
   const subject = email.subject.toLowerCase()
   const content = email.content.toLowerCase()
   const sender = email.sender.toLowerCase()

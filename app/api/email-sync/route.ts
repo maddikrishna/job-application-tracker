@@ -5,28 +5,37 @@ import { syncUserEmails } from "@/lib/email-service"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("Email sync API route called")
     const body = await request.json()
 
     // Validate request payload
     if (!body.integrationId) {
+      console.error("Integration ID is required")
       return NextResponse.json({ error: "Integration ID is required" }, { status: 400 })
     }
+
+    console.log(`Syncing emails for integration: ${body.integrationId}`)
 
     // Get user from Supabase
     const supabase = createRouteHandlerClient({ cookies })
     const { data: user, error: userError } = await supabase.auth.getUser()
 
     if (userError || !user) {
+      console.error("Unauthorized:", userError)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    console.log(`User authenticated: ${user.user.id}`)
 
     // Sync emails
     const result = await syncUserEmails(user.user.id, body.integrationId)
 
     if (!result.success) {
+      console.error("Email sync failed:", result.error)
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
+    console.log("Email sync completed successfully")
     return NextResponse.json({
       success: true,
       processedCount: result.processedCount,

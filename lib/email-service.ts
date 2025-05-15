@@ -31,12 +31,14 @@ export class GmailProvider implements EmailProvider {
   }
 
   async connect(credentials: any): Promise<boolean> {
+    console.log("Connecting to Gmail provider...")
     this.credentials = credentials
     this.accessToken = credentials.access_token
 
     // Check if the token is expired and refresh if needed
     const now = Math.floor(Date.now() / 1000)
     if (credentials.issued_at && credentials.expires_in && now > credentials.issued_at + credentials.expires_in - 300) {
+      console.log("Token expired, refreshing...")
       // Token is expired or will expire soon, refresh it
       try {
         const response = await fetch("https://oauth2.googleapis.com/token", {
@@ -55,6 +57,7 @@ export class GmailProvider implements EmailProvider {
         const data = await response.json()
 
         if (response.ok) {
+          console.log("Token refreshed successfully")
           this.accessToken = data.access_token
 
           // Update the stored credentials with the new token
@@ -77,17 +80,28 @@ export class GmailProvider implements EmailProvider {
       }
     }
 
+    console.log("Connected to Gmail provider successfully")
     return true
   }
 
   async fetchEmails(since?: Date, maxResults = 50): Promise<EmailData[]> {
     try {
+      // If no since date is provided, use 5 days ago
+      if (!since) {
+        since = new Date()
+        since.setDate(since.getDate() - 5)
+      }
+
+      console.log(`Fetching emails since: ${since.toISOString()}`)
+
       // Construct the Gmail API query
       let query = "category:primary"
       if (since) {
         const sinceDate = since.toISOString().split("T")[0] // Format as YYYY-MM-DD
         query += ` after:${sinceDate}`
       }
+
+      console.log(`Gmail API query: ${query}`)
 
       // Make the API call to Gmail
       const response = await fetch(
@@ -100,10 +114,13 @@ export class GmailProvider implements EmailProvider {
       )
 
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`Gmail API error: ${response.status} ${response.statusText}`, errorText)
         throw new Error(`Gmail API error: ${response.status} ${response.statusText}`)
       }
 
       const data = await response.json()
+      console.log(`Found ${data.messages?.length || 0} messages`)
 
       if (!data.messages || data.messages.length === 0) {
         return []
@@ -114,6 +131,7 @@ export class GmailProvider implements EmailProvider {
 
       for (const message of data.messages.slice(0, maxResults)) {
         try {
+          console.log(`Fetching details for message: ${message.id}`)
           const messageResponse = await fetch(
             `https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=full`,
             {
@@ -135,6 +153,8 @@ export class GmailProvider implements EmailProvider {
           const subject = headers.find((h: any) => h.name === "Subject")?.value || "No Subject"
           const from = headers.find((h: any) => h.name === "From")?.value || ""
           const date = headers.find((h: any) => h.name === "Date")?.value
+
+          console.log(`Processing email: ${subject}`)
 
           // Extract content
           let content = ""
@@ -166,6 +186,7 @@ export class GmailProvider implements EmailProvider {
         }
       }
 
+      console.log(`Successfully processed ${emails.length} emails`)
       return emails
     } catch (error) {
       console.error("Error fetching emails:", error)
@@ -175,6 +196,7 @@ export class GmailProvider implements EmailProvider {
 
   async getEmailContent(emailId: string): Promise<string> {
     try {
+      console.log(`Fetching content for email: ${emailId}`)
       const response = await fetch(`https://www.googleapis.com/gmail/v1/users/me/messages/${emailId}?format=full`, {
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
@@ -231,6 +253,7 @@ export function getEmailProvider(provider: string): EmailProvider {
 
 // Function to sync emails for a user
 export async function syncUserEmails(userId: string, integrationId: string) {
+  console.log(`Starting email sync for user ${userId}, integration ${integrationId}`)
   const supabase = createServerComponentClient<Database>({ cookies })
 
   try {
@@ -243,20 +266,36 @@ export async function syncUserEmails(userId: string, integrationId: string) {
       .single()
 
     if (integrationError || !integration) {
+      console.error("Email integration not found:", integrationError)
       throw new Error("Email integration not found")
     }
+
+    console.log(`Found integration: ${integration.provider}`)
 
     // Get the email provider
     const provider = getEmailProvider(integration.provider)
 
     // Connect to the provider
-    await provider.connect(integration.credentials)
+    const connected = await provider.connect(integration.credentials)
+    if (!connected) {
+      console.error("Failed to connect to email provider")
+      throw new Error("Failed to connect to email provider")
+    }
 
-    // Determine the since date based on last sync
-    const since = integration.last_sync ? new Date(integration.last_sync) : undefined
+    // Determine the since date based on last sync or use 5 days ago
+    let since: Date | undefined
+    if (integration.last_sync) {
+      since = new Date(integration.last_sync)
+      console.log(`Using last sync date: ${since.toISOString()}`)
+    } else {
+      since = new Date()
+      since.setDate(since.getDate() - 5) // 5 days ago
+      console.log(`No last sync date, using 5 days ago: ${since.toISOString()}`)
+    }
 
     // Fetch new emails
     const emails = await provider.fetchEmails(since)
+    console.log(`Fetched ${emails.length} emails`)
 
     // Process each email
     let processedCount = 0
@@ -264,13 +303,17 @@ export async function syncUserEmails(userId: string, integrationId: string) {
     let updatedApplications = 0
 
     for (const email of emails) {
+      console.log(`Processing email: ${email.subject}`)
+
       // Get full email content if needed
       if (!email.content) {
+        console.log(`Fetching content for email: ${email.id}`)
         email.content = await provider.getEmailContent(email.id)
       }
 
       // Process the email with AI
       const result = await processEmailWithAI(email, userId)
+      console.log(`AI processing result: isJobRelated=${result.isJobRelated}, category=${result.category}`)
 
       if (result.isJobRelated) {
         processedCount++
@@ -280,6 +323,7 @@ export async function syncUserEmails(userId: string, integrationId: string) {
 
         if (result.externalJobId) {
           // Look for existing application with this external job ID
+          console.log(`Looking for application with external job ID: ${result.externalJobId}`)
           const { data: existingApp } = await supabase
             .from("job_applications")
             .select("id")
@@ -289,11 +333,13 @@ export async function syncUserEmails(userId: string, integrationId: string) {
 
           if (existingApp) {
             applicationId = existingApp.id
+            console.log(`Found existing application by job ID: ${applicationId}`)
           }
         }
 
         // If no existing application found by job ID, try to match by company and title
         if (!applicationId && result.companyName && result.jobTitle) {
+          console.log(`Looking for application with company: ${result.companyName}, title: ${result.jobTitle}`)
           const { data: existingApp } = await supabase
             .from("job_applications")
             .select("id")
@@ -304,11 +350,13 @@ export async function syncUserEmails(userId: string, integrationId: string) {
 
           if (existingApp) {
             applicationId = existingApp.id
+            console.log(`Found existing application by company and title: ${applicationId}`)
           }
         }
 
         // If this is a new application, create it
         if (!applicationId && result.category === "application") {
+          console.log(`Creating new application: ${result.jobTitle} at ${result.companyName}`)
           const { data: newApp, error: newAppError } = await supabase
             .from("job_applications")
             .insert({
@@ -333,11 +381,27 @@ export async function syncUserEmails(userId: string, integrationId: string) {
 
           applicationId = newApp.id
           newApplications++
+          console.log(`Created new application: ${applicationId}`)
         }
 
         // Store the email
         if (applicationId) {
-          await supabase.from("application_emails").insert({
+          console.log(`Storing email for application: ${applicationId}`)
+
+          // Check if this email is already stored
+          const { data: existingEmail } = await supabase
+            .from("application_emails")
+            .select("id")
+            .eq("application_id", applicationId)
+            .eq("email_id", email.id)
+            .maybeSingle()
+
+          if (existingEmail) {
+            console.log(`Email already stored, skipping: ${email.id}`)
+            continue
+          }
+
+          const { error: emailError } = await supabase.from("application_emails").insert({
             user_id: userId,
             application_id: applicationId,
             email_id: email.id,
@@ -349,9 +413,15 @@ export async function syncUserEmails(userId: string, integrationId: string) {
             metadata: result.metadata,
           })
 
+          if (emailError) {
+            console.error("Error storing email:", emailError)
+            continue
+          }
+
           // Update application status if needed
           if (result.suggestedStatus && result.suggestedStatus !== "applied") {
-            await supabase
+            console.log(`Updating application status to: ${result.suggestedStatus}`)
+            const { error: updateError } = await supabase
               .from("job_applications")
               .update({
                 status: result.suggestedStatus,
@@ -359,12 +429,21 @@ export async function syncUserEmails(userId: string, integrationId: string) {
               })
               .eq("id", applicationId)
 
+            if (updateError) {
+              console.error("Error updating application status:", updateError)
+              continue
+            }
+
             // Add status history entry
-            await supabase.from("application_status_history").insert({
+            const { error: historyError } = await supabase.from("application_status_history").insert({
               application_id: applicationId,
               status: result.suggestedStatus,
               notes: `Status updated based on email: ${email.subject}`,
             })
+
+            if (historyError) {
+              console.error("Error adding status history:", historyError)
+            }
 
             updatedApplications++
           }
@@ -373,7 +452,8 @@ export async function syncUserEmails(userId: string, integrationId: string) {
     }
 
     // Update the last sync time
-    await supabase
+    console.log(`Updating last sync time to: ${new Date().toISOString()}`)
+    const { error: updateError } = await supabase
       .from("email_integrations")
       .update({
         last_sync: new Date().toISOString(),
@@ -381,6 +461,13 @@ export async function syncUserEmails(userId: string, integrationId: string) {
       })
       .eq("id", integrationId)
 
+    if (updateError) {
+      console.error("Error updating last sync time:", updateError)
+    }
+
+    console.log(
+      `Sync complete: ${processedCount} job-related emails, ${newApplications} new applications, ${updatedApplications} updated applications`,
+    )
     return {
       success: true,
       processedCount: emails.length,

@@ -47,7 +47,6 @@ export interface Database {
           remote: boolean | null
           contact_info: Json | null
           is_favorite: boolean | null
-          external_job_id: string | null
         }
         Insert: {
           id?: string
@@ -66,7 +65,6 @@ export interface Database {
           remote?: boolean | null
           contact_info?: Json | null
           is_favorite?: boolean | null
-          external_job_id?: string | null
         }
         Update: {
           id?: string
@@ -85,7 +83,6 @@ export interface Database {
           remote?: boolean | null
           contact_info?: Json | null
           is_favorite?: boolean | null
-          external_job_id?: string | null
         }
       }
       application_status_history: {
@@ -121,9 +118,6 @@ export interface Database {
           last_sync: string | null
           created_at: string
           updated_at: string
-          sync_frequency: string | null
-          filters: Json | null
-          last_email_id: string | null
         }
         Insert: {
           id?: string
@@ -134,9 +128,6 @@ export interface Database {
           last_sync?: string | null
           created_at?: string
           updated_at?: string
-          sync_frequency?: string | null
-          filters?: Json | null
-          last_email_id?: string | null
         }
         Update: {
           id?: string
@@ -147,9 +138,6 @@ export interface Database {
           last_sync?: string | null
           created_at?: string
           updated_at?: string
-          sync_frequency?: string | null
-          filters?: Json | null
-          last_email_id?: string | null
         }
       }
       platform_integrations: {
@@ -182,44 +170,6 @@ export interface Database {
           last_sync?: string | null
           created_at?: string
           updated_at?: string
-        }
-      }
-      application_emails: {
-        Row: {
-          id: string
-          user_id: string
-          application_id: string
-          email_id: string
-          subject: string
-          sender: string
-          received_at: string
-          content: string
-          category: string
-          metadata: Json | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          application_id: string
-          email_id: string
-          subject: string
-          sender: string
-          received_at: string
-          content: string
-          category: string
-          metadata?: Json | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          application_id?: string
-          email_id?: string
-          subject?: string
-          sender?: string
-          received_at?: string
-          content?: string
-          category?: string
-          metadata?: Json | null
         }
       }
     }
