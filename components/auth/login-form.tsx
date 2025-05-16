@@ -26,20 +26,46 @@ export default function LoginForm() {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("Attempting to sign in with:", { email })
+
+      // Check if supabase is properly initialized
+      if (!supabase || !supabase.auth) {
+        console.error("Supabase client not properly initialized")
+        setError("Authentication service unavailable. Please try again later.")
+        setIsLoading(false)
+        return
+      }
+
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) {
-        setError(error.message)
+      console.log("Sign in response:", { data, error: signInError })
+
+      if (signInError) {
+        // Handle specific error cases
+        if (signInError.message === "Invalid login credentials") {
+          setError("Invalid email or password. Please try again.")
+        } else {
+          setError(signInError.message || "Failed to sign in. Please try again.")
+        }
+        console.error("Sign in error:", signInError)
         return
       }
 
+      if (!data.user) {
+        setError("No user returned. Please try again.")
+        console.error("No user data returned")
+        return
+      }
+
+      console.log("Sign in successful, redirecting to dashboard")
       router.push("/dashboard")
       router.refresh()
     } catch (error) {
-      setError("An unexpected error occurred")
+      console.error("Unexpected error during sign in:", error)
+      setError("An unexpected error occurred. Please try again later.")
     } finally {
       setIsLoading(false)
     }
