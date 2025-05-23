@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
     console.log(`Syncing emails for integration: ${body.integrationId}`)
 
     // Get user from Supabase
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = await cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: user, error: userError } = await supabase.auth.getUser()
 
     if (userError || !user) {
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     console.log(`User authenticated: ${user.user.id}`)
 
     // Sync emails
-    const result = await syncUserEmails(user.user.id, body.integrationId)
+    const result = await syncUserEmails(user.user.id, body.integrationId, cookieStore)
 
     if (!result.success) {
       console.error("Email sync failed:", result.error)

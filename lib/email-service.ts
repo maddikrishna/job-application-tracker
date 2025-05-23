@@ -252,9 +252,9 @@ export function getEmailProvider(provider: string): EmailProvider {
 }
 
 // Function to sync emails for a user
-export async function syncUserEmails(userId: string, integrationId: string) {
+export async function syncUserEmails(userId: string, integrationId: string, cookieStore: any) {
   console.log(`Starting email sync for user ${userId}, integration ${integrationId}`)
-  const supabase = createServerComponentClient<Database>({ cookies })
+  const supabase = createServerComponentClient<Database>({ cookies: () => cookieStore })
 
   try {
     // Get the email integration details
