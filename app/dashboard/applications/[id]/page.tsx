@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { notFound } from "next/navigation"
 import { getJobApplicationById, getApplicationStatusHistory } from "@/lib/supabase-server"
 import ApplicationDetail from "@/components/applications/application-detail"

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { getJobApplications, getUserDetails } from "@/lib/supabase-server"
 import DashboardOverview from "@/components/dashboard/dashboard-overview"
 

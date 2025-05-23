@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { redirect } from "next/navigation"
 import { getSession, getUserDetails, getEmailIntegrations, getPlatformIntegrations } from "@/lib/supabase-server"
 import SettingsPage from "@/components/settings/settings-page"

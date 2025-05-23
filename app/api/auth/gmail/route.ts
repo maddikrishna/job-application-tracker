@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // Google OAuth configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
 

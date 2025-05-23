@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { redirect } from "next/navigation"
 import { getSession } from "@/lib/supabase-server"
 import LoginForm from "@/components/auth/login-form"

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { notFound, redirect } from "next/navigation"
 import { getSession, getJobApplicationById } from "@/lib/supabase-server"
 import EditApplicationForm from "@/components/applications/edit-application-form"

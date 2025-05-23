@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import type { NextRequest } from "next/server"
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
