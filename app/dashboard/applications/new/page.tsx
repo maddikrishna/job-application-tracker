@@ -11,7 +11,7 @@ export default async function NewApplicationPage() {
   }
 
   return (
-    <div className="container py-6">
+    <div className="container m-auto py-6">
       <h1 className="text-3xl font-bold mb-6">Add New Application</h1>
       <NewApplicationForm userId={session.user.id} />
     </div>

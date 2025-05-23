@@ -313,10 +313,25 @@ export async function syncUserEmails(userId: string, integrationId: string) {
 
       // Process the email with AI
       const result = await processEmailWithAI(email, userId)
-      console.log(`AI processing result: isJobRelated=${result.isJobRelated}, category=${result.category}`)
+      console.log(`AI processing result: isJobRelated=${result.isJobRelated}, category=${result.category}, jobTitle=${result.jobTitle}, companyName=${result.companyName}`)
+
+      // Validate AI result
+      if (!result || typeof result.isJobRelated !== 'boolean') {
+        console.error("Invalid AI result:", result)
+        continue
+      }
 
       if (result.isJobRelated) {
         processedCount++
+
+        // Validate required fields for job applications
+        if (result.category === "application" && (!result.companyName || !result.jobTitle)) {
+          console.warn("Missing required fields for job application:", {
+            companyName: result.companyName,
+            jobTitle: result.jobTitle,
+            subject: email.subject,
+          })
+        }
 
         // Check if this email is related to an existing application
         let applicationId: string | null = null
@@ -354,22 +369,35 @@ export async function syncUserEmails(userId: string, integrationId: string) {
           }
         }
 
-        // If this is a new application, create it
+        // Only create new applications for explicit application confirmations with required fields
         if (!applicationId && result.category === "application") {
+          // Require both jobTitle and companyName to be present and valid
+          if (!result.jobTitle || !result.companyName || 
+              result.jobTitle === "Unknown Position" || 
+              result.companyName === "Unknown Company") {
+            console.warn(`Skipping application creation - missing required fields:`, {
+              jobTitle: result.jobTitle,
+              companyName: result.companyName,
+              subject: email.subject
+            })
+            continue
+          }
+
           console.log(`Creating new application: ${result.jobTitle} at ${result.companyName}`)
           const { data: newApp, error: newAppError } = await supabase
             .from("job_applications")
             .insert({
               user_id: userId,
-              job_title: result.jobTitle || "Unknown Position",
-              company_name: result.companyName || "Unknown Company",
-              job_description: result.jobDescription,
-              job_url: result.jobUrl,
-              status: "applied",
+              job_title: result.jobTitle,
+              company_name: result.companyName,
+              job_description: result.jobDescription || null,
+              job_url: result.jobUrl || null,
+              status: result.suggestedStatus || "applied",
               source: "email",
-              external_job_id: result.externalJobId,
+              external_job_id: result.externalJobId || null,
               applied_date: email.receivedAt.toISOString(),
               last_updated: new Date().toISOString(),
+              ai_metadata: result.metadata || null,
             })
             .select("id")
             .single()
@@ -447,7 +475,11 @@ export async function syncUserEmails(userId: string, integrationId: string) {
 
             updatedApplications++
           }
+        } else {
+          console.warn(`No applicationId found or created for email: ${email.subject}`)
         }
+      } else {
+        console.log(`Email not job-related: ${email.subject}`)
       }
     }
 

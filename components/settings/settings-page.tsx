@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import type { User } from "@supabase/supabase-js"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { useSupabase } from "@/components/supabase-provider"
 import { toast } from "@/components/ui/use-toast"
-import { Mail, Linkedin, Brain, AlertTriangle } from "lucide-react"
+import { Mail, Linkedin, Brain, AlertTriangle, User as UserIcon, Settings as SettingsIcon, Bell, Palette, MailCheck } from "lucide-react"
 import EmailIntegrationSetup from "./email-integration-setup"
 
 interface SettingsPageProps {
@@ -160,202 +161,218 @@ export default function SettingsPage({
   }
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="account">Account</TabsTrigger>
-        <TabsTrigger value="integrations">Integrations</TabsTrigger>
-        <TabsTrigger value="email-setup">Email Setup</TabsTrigger>
-        <TabsTrigger value="notifications">Notifications</TabsTrigger>
-        <TabsTrigger value="appearance">Appearance</TabsTrigger>
-      </TabsList>
+    <div className="container mx-auto py-6 px-4 pb-24 lg:px-0 lg:pb-0 space-y-8">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8 w-full">
+        {/* Mobile: Use Select for tab selection */}
+        <div className="block md:hidden mb-6">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full py-3 px-3 rounded-xl text-base font-semibold shadow-md border border-primary/20 bg-background flex items-center gap-2">
+              <SelectValue placeholder="Select section" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl shadow-lg">
+              <SelectItem value="account" className="py-3 px-4 text-base">Account</SelectItem>
+              <SelectItem value="integrations" className="py-3 px-4 text-base">Integrations</SelectItem>
+              <SelectItem value="email-setup" className="py-3 px-4 text-base">Email Setup</SelectItem>
+              <SelectItem value="notifications" className="py-3 px-4 text-base">Notifications</SelectItem>
+              <SelectItem value="appearance" className="py-3 px-4 text-base">Appearance</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {/* Desktop: Use TabsList */}
+        <TabsList className="hidden md:inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground mb-8">
+           <TabsTrigger value="account">Account</TabsTrigger>
+           <TabsTrigger value="integrations">Integrations</TabsTrigger>
+           <TabsTrigger value="email-setup">Email Setup</TabsTrigger>
+           <TabsTrigger value="notifications">Notifications</TabsTrigger>
+           <TabsTrigger value="appearance">Appearance</TabsTrigger>
+        </TabsList>
+        {/* Account Section */}
+        <TabsContent value="account" className="grid grid-cols-1 gap-6 w-full">
+          <Card className="rounded-2xl shadow-md bg-background/80 w-full">
+            <CardHeader className="mb-2">
+              <CardTitle className="text-lg font-bold text-left">Profile</CardTitle>
+              <CardDescription className="text-base text-left">Manage your account information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 w-full text-left">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" value={user?.email || ""} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              </div>
+              <Button onClick={handleUpdateProfile} disabled={isUpdatingProfile} className="w-full py-3 text-base font-semibold rounded-xl">
+                {isUpdatingProfile ? "Updating..." : "Update Profile"}
+              </Button>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl shadow-md bg-background/80 w-full">
+            <CardHeader className="mb-2">
+              <CardTitle className="text-lg font-bold text-left">Password</CardTitle>
+              <CardDescription className="text-base text-left">Change your password</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 w-full text-left">
+              <div className="space-y-2">
+                <Label htmlFor="current-password">Current Password</Label>
+                <Input id="current-password" type="password" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input id="new-password" type="password" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm New Password</Label>
+                <Input id="confirm-password" type="password" />
+              </div>
+              <Button className="w-full py-3 text-base font-semibold rounded-xl">Change Password</Button>
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl shadow-md bg-background/80 w-full">
+            <CardHeader className="mb-2">
+              <CardTitle className="text-lg font-bold text-left">Delete Account</CardTitle>
+              <CardDescription className="text-base text-left">Permanently delete your account and all your data</CardDescription>
+            </CardHeader>
+            <CardContent className="w-full text-left">
+              <Button variant="destructive" className="w-full py-3 text-base font-semibold rounded-xl">Delete Account</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <TabsContent value="account" className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile</CardTitle>
-            <CardDescription>Manage your account information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" value={user?.email || ""} disabled />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-            </div>
-            <Button onClick={handleUpdateProfile} disabled={isUpdatingProfile}>
-              {isUpdatingProfile ? "Updating..." : "Update Profile"}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Password</CardTitle>
-            <CardDescription>Change your password</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="current-password">Current Password</Label>
-              <Input id="current-password" type="password" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-password">New Password</Label>
-              <Input id="new-password" type="password" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm New Password</Label>
-              <Input id="confirm-password" type="password" />
-            </div>
-            <Button>Change Password</Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Delete Account</CardTitle>
-            <CardDescription>Permanently delete your account and all your data</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="destructive">Delete Account</Button>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="integrations" className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Email Integration</CardTitle>
-            <CardDescription>Connect your email account to automatically track job applications</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Mail className="h-5 w-5 text-primary" />
+        <TabsContent value="integrations" className="space-y-4 w-full">
+          <Card>
+            <CardHeader>
+              <CardTitle>Email Integration</CardTitle>
+              <CardDescription>Connect your email account to automatically track job applications</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 w-full">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium">Gmail</p>
+                    <p className="text-sm text-muted-foreground">
+                      {emailIntegrations?.some((i) => i.provider === "gmail") ? "Connected" : "Not connected"}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" onClick={handleConnectGmail} className="w-full sm:w-auto">
+                  {emailIntegrations?.some((i) => i.provider === "gmail") ? "Manage" : "Connect with Google"}
+                </Button>
+              </div>
+              <Separator />
+              <div className="rounded-md bg-muted p-4 flex flex-col sm:flex-row items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium">Gmail</p>
-                  <p className="text-sm text-muted-foreground">
-                    {emailIntegrations?.some((i) => i.provider === "gmail") ? "Connected" : "Not connected"}
+                  <p className="font-medium">How Email Integration Works</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    When connected, our AI will scan your inbox for job application emails. We only access emails related
+                    to job applications and never store your email credentials.
                   </p>
                 </div>
               </div>
-              <Button variant="outline" onClick={handleConnectGmail}>
-                {emailIntegrations?.some((i) => i.provider === "gmail") ? "Manage" : "Connect with Google"}
-              </Button>
-            </div>
-            <Separator />
-            <div className="rounded-md bg-muted p-4 flex items-start gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium">How Email Integration Works</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  When connected, our AI will scan your inbox for job application emails. We only access emails related
-                  to job applications and never store your email credentials.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Platform Integrations</CardTitle>
-            <CardDescription>Connect job platforms to automatically track applications</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Linkedin className="h-5 w-5 text-primary" />
+          <Card>
+            <CardHeader>
+              <CardTitle>Platform Integrations</CardTitle>
+              <CardDescription>Connect job platforms to automatically track applications</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Linkedin className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium">LinkedIn</p>
+                    <p className="text-sm text-muted-foreground">
+                      {platformIntegrations?.some((i) => i.platform === "linkedin") ? "Connected" : "Not connected"}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline">
+                  {platformIntegrations?.some((i) => i.platform === "linkedin") ? "Disconnect" : "Connect"}
+                </Button>
+              </div>
+              <Separator />
+              <div className="rounded-md bg-muted p-4 flex items-start gap-2">
+                <Brain className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium">LinkedIn</p>
-                  <p className="text-sm text-muted-foreground">
-                    {platformIntegrations?.some((i) => i.platform === "linkedin") ? "Connected" : "Not connected"}
+                  <p className="font-medium">AI-Powered Tracking</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Our AI technology automatically detects when you apply for jobs on connected platforms, eliminating
+                    the need for manual tracking.
                   </p>
                 </div>
               </div>
-              <Button variant="outline">
-                {platformIntegrations?.some((i) => i.platform === "linkedin") ? "Disconnect" : "Connect"}
-              </Button>
-            </div>
-            <Separator />
-            <div className="rounded-md bg-muted p-4 flex items-start gap-2">
-              <Brain className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium">AI-Powered Tracking</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Our AI technology automatically detects when you apply for jobs on connected platforms, eliminating
-                  the need for manual tracking.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <TabsContent value="email-setup" className="space-y-4" id="email-setup-tab">
-        <EmailIntegrationSetup />
-      </TabsContent>
+        <TabsContent value="email-setup" className="space-y-4" id="email-setup-tab">
+          <EmailIntegrationSetup />
+        </TabsContent>
 
-      <TabsContent value="notifications" className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Notification Settings</CardTitle>
-            <CardDescription>Configure how and when you receive notifications</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Email Notifications</p>
-                <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+        <TabsContent value="notifications" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Notification Settings</CardTitle>
+              <CardDescription>Configure how and when you receive notifications</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Email Notifications</p>
+                  <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+                </div>
+                <Switch defaultChecked />
               </div>
-              <Switch defaultChecked />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Application Status Updates</p>
-                <p className="text-sm text-muted-foreground">Get notified when your application status changes</p>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Application Status Updates</p>
+                  <p className="text-sm text-muted-foreground">Get notified when your application status changes</p>
+                </div>
+                <Switch defaultChecked />
               </div>
-              <Switch defaultChecked />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Follow-up Reminders</p>
-                <p className="text-sm text-muted-foreground">Receive reminders to follow up on applications</p>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Follow-up Reminders</p>
+                  <p className="text-sm text-muted-foreground">Receive reminders to follow up on applications</p>
+                </div>
+                <Switch defaultChecked />
               </div>
-              <Switch defaultChecked />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">New Job Recommendations</p>
-                <p className="text-sm text-muted-foreground">Get notified about new job opportunities</p>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">New Job Recommendations</p>
+                  <p className="text-sm text-muted-foreground">Get notified about new job opportunities</p>
+                </div>
+                <Switch />
               </div>
-              <Switch />
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <TabsContent value="appearance" className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Theme</CardTitle>
-            <CardDescription>Customize the appearance of the application</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Dark Mode</p>
-                <p className="text-sm text-muted-foreground">Toggle between light and dark mode</p>
+        <TabsContent value="appearance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Theme</CardTitle>
+              <CardDescription>Customize the appearance of the application</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Dark Mode</p>
+                  <p className="text-sm text-muted-foreground">Toggle between light and dark mode</p>
+                </div>
+                <Switch />
               </div>
-              <Switch />
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }

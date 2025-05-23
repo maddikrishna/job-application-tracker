@@ -120,13 +120,13 @@ export default function ApplicationsList({ applications: initialApplications }: 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-2 flex-wrap">
           <h2 className="text-2xl font-bold">All Applications</h2>
           <Badge variant="outline">{applications.length}</Badge>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
+        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+          <div className="relative w-full md:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
@@ -145,19 +145,19 @@ export default function ApplicationsList({ applications: initialApplications }: 
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2 justify-between">
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col md:flex-row gap-2 justify-between">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] py-3 px-4 rounded-xl text-base font-semibold shadow-md border-2 border-primary/20 bg-background flex items-center gap-2">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="saved">Saved</SelectItem>
-              <SelectItem value="applied">Applied</SelectItem>
-              <SelectItem value="interview">Interview</SelectItem>
-              <SelectItem value="offer">Offer</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectContent className="rounded-xl shadow-lg">
+              <SelectItem value="all" className="flex items-center gap-2 py-3 px-4 text-base">All Statuses</SelectItem>
+              <SelectItem value="saved" className="flex items-center gap-2 py-3 px-4 text-base">Saved</SelectItem>
+              <SelectItem value="applied" className="flex items-center gap-2 py-3 px-4 text-base">Applied</SelectItem>
+              <SelectItem value="interview" className="flex items-center gap-2 py-3 px-4 text-base">Interview</SelectItem>
+              <SelectItem value="offer" className="flex items-center gap-2 py-3 px-4 text-base">Offer</SelectItem>
+              <SelectItem value="rejected" className="flex items-center gap-2 py-3 px-4 text-base">Rejected</SelectItem>
             </SelectContent>
           </Select>
 
@@ -180,15 +180,15 @@ export default function ApplicationsList({ applications: initialApplications }: 
           </DropdownMenu>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full md:w-auto">
           <Select value={sortField} onValueChange={setSortField}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] py-3 px-4 rounded-xl text-base font-semibold shadow-md border-2 border-primary/20 bg-background flex items-center gap-2">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="applied_date">Date Applied</SelectItem>
-              <SelectItem value="company_name">Company Name</SelectItem>
-              <SelectItem value="job_title">Job Title</SelectItem>
+            <SelectContent className="rounded-xl shadow-lg">
+              <SelectItem value="applied_date" className="flex items-center gap-2 py-3 px-4 text-base">Date Applied</SelectItem>
+              <SelectItem value="company_name" className="flex items-center gap-2 py-3 px-4 text-base">Company Name</SelectItem>
+              <SelectItem value="job_title" className="flex items-center gap-2 py-3 px-4 text-base">Job Title</SelectItem>
             </SelectContent>
           </Select>
 
@@ -231,7 +231,7 @@ export default function ApplicationsList({ applications: initialApplications }: 
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 mt-4 grid-cols-1">
           {filteredApplications.map((application) => (
             <Card key={application.id} className="overflow-hidden">
               <CardContent className="p-0">

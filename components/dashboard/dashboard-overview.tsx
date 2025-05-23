@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useSupabase } from "@/components/supabase-provider"
 import { useRouter } from "next/navigation"
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel"
 
 interface JobApplication {
   id: string
@@ -97,8 +98,72 @@ export default function DashboardOverview({ applications: initialApplications, u
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-6 relative">
+      {/* Carousel for mobile, grid for desktop */}
+      <div className="block lg:hidden">
+        <Carousel opts={{ align: 'start', dragFree: true }}>
+          <CarouselContent className="px-4 gap-4 overflow-x-visible">
+            <CarouselItem className="basis-[90vw] max-w-[90vw] min-w-[90vw]">
+              <Card className="bg-primary text-white shadow-lg rounded-2xl p-6 min-w-[80vw] max-w-xs mx-auto">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-lg font-bold">Total Applications</CardTitle>
+                  <Briefcase className="h-6 w-6 text-white/80" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-extrabold">{applications.length}</div>
+                  <p className="text-sm text-white/80 mt-2">
+                    {applications.length > 0
+                      ? `Last application on ${formatDate(applications[0].applied_date)}`
+                      : "No applications yet"}
+                  </p>
+                </CardContent>
+              </Card>
+            </CarouselItem>
+            <CarouselItem className="basis-[90vw] max-w-[90vw] min-w-[90vw]">
+              <Card className="bg-white shadow rounded-xl p-4 min-w-[70vw] max-w-xs mx-auto">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-base font-semibold">Applications in Progress</CardTitle>
+                  <Clock className="h-5 w-5 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xl font-bold">{applicationsByStatus.applied + applicationsByStatus.interview}</div>
+                  <p className="text-xs text-muted-foreground">{applicationsByStatus.interview} in interview stage</p>
+                </CardContent>
+              </Card>
+            </CarouselItem>
+            <CarouselItem className="basis-[90vw] max-w-[90vw] min-w-[90vw]">
+              <Card className="bg-white shadow rounded-xl p-4 min-w-[70vw] max-w-xs mx-auto">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-base font-semibold">Offers Received</CardTitle>
+                  <Star className="h-5 w-5 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xl font-bold">{applicationsByStatus.offer}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {((applicationsByStatus.offer / (applications.length || 1)) * 100).toFixed(1)}% success rate
+                  </p>
+                </CardContent>
+              </Card>
+            </CarouselItem>
+            <CarouselItem className="basis-[90vw] max-w-[90vw] min-w-[90vw]">
+              <Card className="bg-white shadow rounded-xl p-4 min-w-[70vw] max-w-xs mx-auto">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-base font-semibold">Rejection Rate</CardTitle>
+                  <StarOff className="h-5 w-5 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-xl font-bold">
+                    {((applicationsByStatus.rejected / (applications.length || 1)) * 100).toFixed(1)}%
+                  </div>
+                  <p className="text-xs text-muted-foreground">{applicationsByStatus.rejected} applications rejected</p>
+                </CardContent>
+              </Card>
+            </CarouselItem>
+          </CarouselContent>
+        </Carousel>
+      </div>
+      <div className="hidden lg:grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Original grid for desktop */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
@@ -148,12 +213,21 @@ export default function DashboardOverview({ applications: initialApplications, u
           </CardContent>
         </Card>
       </div>
+      {/* FAB for Add Application on desktop/tablet only */}
+      <div className="fixed bottom-6 right-6 z-50 hidden md:block">
+        <Link href="/dashboard/applications/new">
+          <Button size="lg" className="rounded-full shadow-lg bg-primary text-white w-16 h-16 flex items-center justify-center">
+            <PlusCircle className="h-8 w-8" />
+            <span className="sr-only">Add Application</span>
+          </Button>
+        </Link>
+      </div>
 
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <h2 className="text-2xl font-bold">Recent Applications</h2>
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <div className="relative w-full sm:w-64">
+          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            <div className="relative w-full md:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
@@ -173,16 +247,16 @@ export default function DashboardOverview({ applications: initialApplications, u
         </div>
 
         {applications.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-10">
-              <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-medium mb-2">No applications yet</h3>
-              <p className="text-muted-foreground mb-4 text-center">
+          <Card className="bg-gradient-to-b from-primary/10 to-background rounded-2xl shadow-xl mb-8">
+            <CardContent className="flex flex-col items-center justify-center py-14 px-4">
+              <Briefcase className="h-16 w-16 text-primary mb-6" />
+              <h3 className="text-2xl font-extrabold mb-2 text-center">No applications yet</h3>
+              <p className="text-lg text-muted-foreground mb-6 text-center">
                 Start tracking your job applications to get insights and stay organized
               </p>
               <Link href="/dashboard/applications/new">
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
+                <Button size="lg" className="px-8 py-3 text-base font-semibold shadow-md rounded-xl">
+                  <PlusCircle className="mr-2 h-5 w-5" />
                   Add Your First Application
                 </Button>
               </Link>
@@ -200,12 +274,12 @@ export default function DashboardOverview({ applications: initialApplications, u
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-4 grid-cols-1">
             {filteredApplications.slice(0, 5).map((application) => (
               <Card key={application.id} className="overflow-hidden">
                 <CardContent className="p-0">
-                  <div className="flex flex-col md:flex-row">
-                    <div className="flex-1 p-6">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 p-4 sm:p-6">
                       <div className="flex items-start justify-between">
                         <div>
                           <h3 className="text-lg font-semibold mb-1">
@@ -245,7 +319,7 @@ export default function DashboardOverview({ applications: initialApplications, u
                         {application.remote && <Badge variant="outline">Remote</Badge>}
                       </div>
                     </div>
-                    <div className="flex items-center justify-between md:justify-end gap-4 p-4 md:p-6 bg-muted/50 md:w-48">
+                    <div className="flex items-center justify-between md:justify-end gap-4 p-4 sm:p-6 bg-muted/50 w-full md:w-48">
                       <div className="flex flex-col">
                         <div className="flex items-center text-sm text-muted-foreground mb-1">
                           <Calendar className="h-4 w-4 mr-1" />
@@ -269,21 +343,21 @@ export default function DashboardOverview({ applications: initialApplications, u
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>AI Integration Status</CardTitle>
-            <CardDescription>Configure AI to automatically track your job applications</CardDescription>
+      <div className="grid gap-8 md:grid-cols-2 mt-8">
+        <Card className="rounded-2xl shadow-md bg-background/80">
+          <CardHeader className="mb-2">
+            <CardTitle className="text-lg font-bold">AI Integration Status</CardTitle>
+            <CardDescription className="text-base">Configure AI to automatically track your job applications</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="h-2.5 w-2.5 rounded-full bg-red-500"></div>
-                  <span className="font-medium">Email Integration</span>
+                  <span className="font-medium text-base">Email Integration</span>
                 </div>
                 <Link href="/dashboard/settings?tab=email-setup">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="transition-colors hover:bg-primary/10">
                     Configure
                   </Button>
                 </Link>
@@ -291,10 +365,10 @@ export default function DashboardOverview({ applications: initialApplications, u
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="h-2.5 w-2.5 rounded-full bg-red-500"></div>
-                  <span className="font-medium">LinkedIn Integration</span>
+                  <span className="font-medium text-base">LinkedIn Integration</span>
                 </div>
                 <Link href="/dashboard/settings/integrations">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="transition-colors hover:bg-primary/10">
                     Configure
                   </Button>
                 </Link>
@@ -302,34 +376,34 @@ export default function DashboardOverview({ applications: initialApplications, u
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common tasks and shortcuts</CardDescription>
+        <Card className="rounded-2xl shadow-md bg-background/80">
+          <CardHeader className="mb-2">
+            <CardTitle className="text-lg font-bold">Quick Actions</CardTitle>
+            <CardDescription className="text-base">Common tasks and shortcuts</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Link href="/dashboard/applications/new">
-                <Button variant="outline" className="w-full justify-start">
-                  <PlusCircle className="mr-2 h-4 w-4" />
+                <Button variant="outline" className="w-full justify-start py-4 text-base font-semibold rounded-xl shadow-sm">
+                  <PlusCircle className="mr-2 h-5 w-5" />
                   Add Application
                 </Button>
               </Link>
               <Link href="/dashboard/settings/integrations">
-                <Button variant="outline" className="w-full justify-start">
-                  <Settings className="mr-2 h-4 w-4" />
+                <Button variant="outline" className="w-full justify-start py-4 text-base font-semibold rounded-xl shadow-sm">
+                  <Settings className="mr-2 h-5 w-5" />
                   Configure AI
                 </Button>
               </Link>
               <Link href="/dashboard/analytics">
-                <Button variant="outline" className="w-full justify-start">
-                  <LineChart className="mr-2 h-4 w-4" />
+                <Button variant="outline" className="w-full justify-start py-4 text-base font-semibold rounded-xl shadow-sm">
+                  <LineChart className="mr-2 h-5 w-5" />
                   View Analytics
                 </Button>
               </Link>
               <Link href="/dashboard/applications">
-                <Button variant="outline" className="w-full justify-start">
-                  <Briefcase className="mr-2 h-4 w-4" />
+                <Button variant="outline" className="w-full justify-start py-4 text-base font-semibold rounded-xl shadow-sm">
+                  <Briefcase className="mr-2 h-5 w-5" />
                   All Applications
                 </Button>
               </Link>

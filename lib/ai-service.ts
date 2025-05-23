@@ -1,9 +1,9 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
-import type { Database } from "./database.types"
 import type { EmailData } from "./email-service"
 import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
+import type { Database } from "./database.types"
 
 // Result interface for email processing
 interface EmailProcessingResult {
@@ -15,11 +15,21 @@ interface EmailProcessingResult {
   jobUrl?: string
   externalJobId?: string
   suggestedStatus?: string
-  metadata?: any
+  metadata?: {
+    confidence?: number
+    reasoning?: string
+    extractedFields?: {
+      companyName?: string
+      jobTitle?: string
+      jobUrl?: string
+      externalJobId?: string
+    }
+    raw?: unknown
+  }
 }
 
 // Function to process an email with AI
-export async function processEmailWithAI(email: EmailData, userId: string): Promise<EmailProcessingResult> {
+export async function processEmailWithAI(email: EmailData, _userId: string): Promise<EmailProcessingResult> {
   try {
     console.log("Processing email with AI:", email.subject)
 
@@ -27,34 +37,65 @@ export async function processEmailWithAI(email: EmailData, userId: string): Prom
     const { text } = await generateText({
       model: openai("gpt-4o"),
       prompt: `
-        Analyze the following email to determine if it's related to a job application. 
-        Extract key information if it is job-related.
-        
-        Email Subject: ${email.subject}
-        Email Sender: ${email.sender}
-        Email Content: ${email.content}
-        
-        Respond in the following JSON format:
-        {
-          "isJobRelated": true/false,
-          "category": "application"/"update"/"interview"/"offer"/"rejection"/"other",
-          "companyName": "Company name if detected",
-          "jobTitle": "Job title if detected",
-          "jobDescription": "Brief summary of the job description if available",
-          "jobUrl": "URL to the job posting if available",
-          "externalJobId": "Job ID or reference number if available",
-          "suggestedStatus": "applied"/"interview"/"offer"/"rejected"/"saved",
-          "confidence": 0-1 score of confidence in this analysis,
-          "reasoning": "Brief explanation of why this email was categorized this way"
-        }
+
+Task:
+Analyze the provided email to determine if it directly confirms or communicates about a specific job application. Strictly classify as job-related only if the email explicitly references a job application that the recipient (the user) has actively submitted.
+
+Criteria for "Job-Related" (Mark as true):
+    •	Application confirmation
+    •	Status updates (application reviewed, shortlisted, etc.)
+    •	Interview invitations or scheduling
+    •	Job offers
+    •	Application rejections
+
+Criteria for "Not Job-Related" (Mark as false):
+    •	Onboarding, welcome, sign-up, or account creation emails
+    •	General platform updates
+    •	Marketing, promotional, or newsletter communications
+    •	Generic job alerts, job board promotions, or job recommendations unrelated to an explicitly submitted application
+    •	Informational or unrelated content not explicitly tied to a user's specific application
+
+Email Details:
+    •	Subject: ${email.subject}
+    •	Sender: ${email.sender}
+    •	Content: ${email.content.replace(/<[^>]+>/g, '').slice(0, 2000)}
+
+Provide your evaluation strictly following this JSON format:
+
+{
+  "isJobRelated": true/false,
+  "category": "application" | "update" | "interview" | "offer" | "rejection" | "other",
+  "companyName": "Company name if explicitly mentioned",
+  "jobTitle": "Job title if explicitly mentioned",
+  "jobDescription": "Brief job description summary if explicitly mentioned",
+  "jobUrl": "URL to the job posting if explicitly provided",
+  "externalJobId": "Job ID or reference number if explicitly provided",
+  "suggestedStatus": "applied" | "interview" | "offer" | "rejected" | "saved",
+  "confidence": 0 to 1 (confidence score in your analysis),
+  "reasoning": "Clearly and explicitly justify why this email is or is not considered directly related to a specific job application. Include details or evidence from the email content to support your classification. Explicitly state if it's a marketing, onboarding, newsletter, general alert, or other non-specific communication."
+}
+
+Important: Be very strict and precise. Do not mark any general emails, marketing communications, newsletters, or non-application-specific job board promotions as "job-related." Only mark emails explicitly referencing a user's previously submitted application as "job-related."
+
       `,
     })
 
     console.log("AI response received:", text.substring(0, 100) + "...")
 
-    // Parse the AI response
+    // Parse the AI response robustly (handle code block formatting)
     try {
-      const result = JSON.parse(text)
+      let cleanText = text.trim()
+      // Remove code block markers if present
+      if (cleanText.startsWith('```json')) {
+        cleanText = cleanText.replace(/^```json/, '').trim()
+      }
+      if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/^```/, '').trim()
+      }
+      if (cleanText.endsWith('```')) {
+        cleanText = cleanText.replace(/```$/, '').trim()
+      }
+      const result = JSON.parse(cleanText)
       return {
         isJobRelated: result.isJobRelated,
         category: result.category,
@@ -73,10 +114,11 @@ export async function processEmailWithAI(email: EmailData, userId: string): Prom
             jobUrl: result.jobUrl,
             externalJobId: result.externalJobId,
           },
+          raw: result,
         },
       }
     } catch (parseError) {
-      console.error("Error parsing AI response:", parseError)
+      console.error("Error parsing AI response:", parseError, text)
       // Fallback to pattern matching if AI response parsing fails
       return fallbackEmailProcessing(email)
     }
@@ -95,7 +137,7 @@ function fallbackEmailProcessing(email: EmailData): EmailProcessingResult {
   const content = email.content.toLowerCase()
   const sender = email.sender.toLowerCase()
 
-  // Check if this is job related
+  // Check if this is job related with more patterns
   const isJobRelated =
     subject.includes("application") ||
     subject.includes("job") ||
@@ -103,90 +145,184 @@ function fallbackEmailProcessing(email: EmailData): EmailProcessingResult {
     subject.includes("career") ||
     subject.includes("interview") ||
     subject.includes("offer") ||
+    subject.includes("rejection") ||
+    subject.includes("hiring") ||
+    subject.includes("recruitment") ||
     content.includes("thank you for applying") ||
     content.includes("we have received your application") ||
     content.includes("we would like to schedule an interview") ||
-    content.includes("we are pleased to offer you")
+    content.includes("we are pleased to offer you") ||
+    content.includes("application status") ||
+    content.includes("application update") ||
+    content.includes("interview invitation") ||
+    content.includes("job offer") ||
+    content.includes("application process")
 
   if (!isJobRelated) {
+    console.log("Email not job-related based on fallback processing")
     return {
       isJobRelated: false,
       category: "other",
+      metadata: {
+        confidence: 0.5,
+        reasoning: "Fallback processing did not detect job-related content",
+      },
     }
   }
 
-  // Determine the category
+  // Determine the category with more patterns
   let category = "other"
   let suggestedStatus = undefined
+  let confidence = 0.7
 
   if (
     subject.includes("application") ||
     subject.includes("applied") ||
     content.includes("thank you for applying") ||
-    content.includes("we have received your application")
+    content.includes("we have received your application") ||
+    content.includes("application received") ||
+    content.includes("application submitted")
   ) {
     category = "application"
     suggestedStatus = "applied"
+    confidence = 0.8
   } else if (
     subject.includes("interview") ||
     content.includes("would like to schedule an interview") ||
-    content.includes("interview invitation")
+    content.includes("interview invitation") ||
+    content.includes("interview scheduling") ||
+    content.includes("interview process")
   ) {
     category = "interview"
     suggestedStatus = "interview"
-  } else if (subject.includes("offer") || content.includes("pleased to offer you") || content.includes("job offer")) {
+    confidence = 0.85
+  } else if (
+    subject.includes("offer") ||
+    content.includes("pleased to offer you") ||
+    content.includes("job offer") ||
+    content.includes("offer letter") ||
+    content.includes("offer details")
+  ) {
     category = "offer"
     suggestedStatus = "offer"
+    confidence = 0.9
   } else if (
     subject.includes("rejection") ||
     subject.includes("not moving forward") ||
     content.includes("we regret to inform you") ||
-    content.includes("we have decided to pursue other candidates")
+    content.includes("we have decided to pursue other candidates") ||
+    content.includes("unfortunately") ||
+    content.includes("not selected") ||
+    content.includes("other candidates")
   ) {
     category = "rejection"
     suggestedStatus = "rejected"
-  } else if (subject.includes("update") || content.includes("update on your application")) {
+    confidence = 0.85
+  } else if (
+    subject.includes("update") ||
+    content.includes("update on your application") ||
+    content.includes("application status") ||
+    content.includes("application progress")
+  ) {
     category = "update"
+    confidence = 0.75
   }
 
-  // Extract company name (simple pattern matching)
-  const companyRegex = /from\s+([A-Za-z0-9\s]+)|([A-Za-z0-9\s]+)\s+team/i
-  const companyMatch = email.content.match(companyRegex)
-  const companyName = companyMatch ? companyMatch[1] || companyMatch[2] : extractCompanyFromEmail(sender)
+  // Extract company name with improved pattern matching
+  const companyPatterns = [
+    /from\s+([A-Za-z0-9\s]+)/i,
+    /([A-Za-z0-9\s]+)\s+team/i,
+    /([A-Za-z0-9\s]+)\s+recruitment/i,
+    /([A-Za-z0-9\s]+)\s+hiring/i,
+    /([A-Za-z0-9\s]+)\s+careers/i,
+  ]
 
-  // Extract job title (simple pattern matching)
-  const titleRegex = /application\s+for\s+([A-Za-z0-9\s]+)|([A-Za-z0-9\s]+)\s+position|([A-Za-z0-9\s]+)\s+role/i
-  const titleMatch = email.content.match(titleRegex)
-  const jobTitle = titleMatch ? titleMatch[1] || titleMatch[2] || titleMatch[3] : extractJobTitleFromSubject(subject)
+  let companyName = undefined
+  for (const pattern of companyPatterns) {
+    const match = email.content.match(pattern)
+    if (match && match[1]) {
+      companyName = match[1].trim()
+      break
+    }
+  }
 
-  // Extract job ID (simple pattern matching)
-  const jobIdRegex =
-    /job\s+id[:\s]+([A-Za-z0-9-]+)|reference\s+number[:\s]+([A-Za-z0-9-]+)|requisition\s+id[:\s]+([A-Za-z0-9-]+)/i
-  const jobIdMatch = email.content.match(jobIdRegex)
-  const externalJobId = jobIdMatch ? jobIdMatch[1] || jobIdMatch[2] || jobIdMatch[3] : undefined
+  if (!companyName) {
+    companyName = extractCompanyFromEmail(sender)
+  }
 
-  // Extract job URL (simple pattern matching)
+  // Extract job title with improved pattern matching
+  const titlePatterns = [
+    /application\s+for\s+([A-Za-z0-9\s]+)/i,
+    /([A-Za-z0-9\s]+)\s+position/i,
+    /([A-Za-z0-9\s]+)\s+role/i,
+    /([A-Za-z0-9\s]+)\s+job/i,
+    /([A-Za-z0-9\s]+)\s+opening/i,
+  ]
+
+  let jobTitle = undefined
+  for (const pattern of titlePatterns) {
+    const match = email.content.match(pattern)
+    if (match && match[1]) {
+      jobTitle = match[1].trim()
+      break
+    }
+  }
+
+  if (!jobTitle) {
+    jobTitle = extractJobTitleFromSubject(subject)
+  }
+
+  // Extract job URL
   const urlRegex = /(https?:\/\/[^\s]+)/g
   const urlMatches = email.content.match(urlRegex)
   const jobUrl = urlMatches ? urlMatches[0] : undefined
 
+  // Extract job ID
+  const jobIdPatterns = [
+    /job\s+id[:\s]+([A-Za-z0-9-]+)/i,
+    /reference\s+number[:\s]+([A-Za-z0-9-]+)/i,
+    /requisition\s+id[:\s]+([A-Za-z0-9-]+)/i,
+    /application\s+id[:\s]+([A-Za-z0-9-]+)/i,
+  ]
+
+  let externalJobId = undefined
+  for (const pattern of jobIdPatterns) {
+    const match = email.content.match(pattern)
+    if (match && match[1]) {
+      externalJobId = match[1].trim()
+      break
+    }
+  }
+
+  console.log("Fallback processing results:", {
+    isJobRelated,
+    category,
+    companyName,
+    jobTitle,
+    jobUrl,
+    externalJobId,
+    suggestedStatus,
+    confidence,
+  })
+
   return {
     isJobRelated,
     category,
-    companyName: companyName?.trim(),
-    jobTitle: jobTitle?.trim(),
+    companyName,
+    jobTitle,
     jobDescription: email.content,
     jobUrl,
     externalJobId,
     suggestedStatus,
     metadata: {
+      confidence,
+      reasoning: "Processed using fallback pattern matching",
       extractedFields: {
-        companyName: companyName?.trim(),
-        jobTitle: jobTitle?.trim(),
+        companyName,
+        jobTitle,
         jobUrl,
         externalJobId,
       },
-      confidence: 0.7, // Lower confidence for pattern matching
     },
   }
 }
@@ -230,6 +366,7 @@ export async function parseJobApplicationEmail(emailContent: string, userId: str
     }
 
     const result = await processEmailWithAI(email, userId)
+    console.log('AI result in parseJobApplicationEmail:', result)
 
     if (!result.isJobRelated) {
       return { success: false, message: "Email does not appear to be job related" }
@@ -237,13 +374,27 @@ export async function parseJobApplicationEmail(emailContent: string, userId: str
 
     const supabase = createServerComponentClient<Database>({ cookies })
 
+    // Validate required fields for new applications
+    if (!result.jobTitle || !result.companyName || 
+        result.jobTitle === "N/A" || result.companyName === "N/A") {
+      console.warn("Missing required fields for job application:", {
+        jobTitle: result.jobTitle,
+        companyName: result.companyName,
+        subject: email.subject
+      })
+      return { success: false, message: "Missing required job application details" }
+    }
+
+    // Store the raw AI response for debugging
+    const aiRaw = result.metadata && result.metadata.raw ? result.metadata.raw : result
+
     // Create job application record
     const { data, error } = await supabase
       .from("job_applications")
       .insert({
         user_id: userId,
-        job_title: result.jobTitle || "Unknown Position",
-        company_name: result.companyName || "Unknown Company",
+        job_title: result.jobTitle,
+        company_name: result.companyName,
         job_description: result.jobDescription,
         job_url: result.jobUrl,
         status: "applied",
@@ -251,25 +402,35 @@ export async function parseJobApplicationEmail(emailContent: string, userId: str
         external_job_id: result.externalJobId,
         applied_date: new Date().toISOString(),
         last_updated: new Date().toISOString(),
+        ai_raw: aiRaw,
       })
       .select()
 
-    if (error) throw error
+    if (error) {
+      console.error('Error inserting job application for job-related email:', error, result)
+    } else if (!data || !data[0]) {
+      console.warn('Job-related email was not saved to DB for unknown reason:', result)
+    } else {
+      console.log('Job-related application saved to DB:', data[0])
+    }
 
-    // Store the email
-    await supabase.from("application_emails").insert({
-      user_id: userId,
-      application_id: data[0].id,
-      email_id: email.id,
-      subject: email.subject,
-      sender: email.sender,
-      received_at: email.receivedAt.toISOString(),
-      content: email.content,
-      category: result.category,
-      metadata: result.metadata,
-    })
-
-    return { success: true, application: data[0] }
+    // Store the email only if data and data[0] exist
+    if (data && data[0]) {
+      await supabase.from("application_emails").insert({
+        user_id: userId,
+        application_id: data[0].id,
+        email_id: email.id,
+        subject: email.subject,
+        sender: email.sender,
+        received_at: email.receivedAt.toISOString(),
+        content: email.content,
+        category: result.category,
+        metadata: result.metadata,
+      })
+      return { success: true, application: data[0] }
+    } else {
+      return { success: false, message: "Job-related email was not saved to DB" }
+    }
   } catch (error) {
     console.error("Error parsing job application email:", error)
     throw error
@@ -277,7 +438,7 @@ export async function parseJobApplicationEmail(emailContent: string, userId: str
 }
 
 // Function to parse LinkedIn job applications
-export async function parseLinkedInApplication(applicationData: any, userId: string) {
+export async function parseLinkedInApplication(applicationData: Record<string, unknown>, userId: string) {
   try {
     // Use AI to analyze the LinkedIn application data
     const { text } = await generateText({

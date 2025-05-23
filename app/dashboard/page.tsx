@@ -6,7 +6,7 @@ export default async function DashboardPage() {
   const userDetails = await getUserDetails()
 
   return (
-    <div className="container py-6">
+    <div className="container mx-auto py-6 px-4 pb-24 lg:px-0 lg:pb-0 space-y-8">
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
       <DashboardOverview applications={applications} userDetails={userDetails} />
     </div>

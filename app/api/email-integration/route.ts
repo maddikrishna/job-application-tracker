@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
       if (!connected) {
         return NextResponse.json({ error: "Failed to connect to email provider" }, { status: 400 })
       }
-    } catch (error: any) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+    } catch (error: unknown) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 400 })
     }
 
     // Create the integration

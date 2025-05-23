@@ -44,13 +44,12 @@ export default function LoginForm() {
       console.log("Sign in response:", { data, error: signInError })
 
       if (signInError) {
-        // Handle specific error cases
-        if (signInError.message === "Invalid login credentials") {
-          setError("Invalid email or password. Please try again.")
+        console.error("Sign in error:", signInError)
+        if (signInError.message.includes("Request rate limit reached")) {
+          setError("Too many login attempts. Please wait a moment and try again.")
         } else {
           setError(signInError.message || "Failed to sign in. Please try again.")
         }
-        console.error("Sign in error:", signInError)
         return
       }
 

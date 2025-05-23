@@ -47,6 +47,7 @@ export interface Database {
           remote: boolean | null
           contact_info: Json | null
           is_favorite: boolean | null
+          ai_metadata: Json | null
         }
         Insert: {
           id?: string
@@ -65,6 +66,7 @@ export interface Database {
           remote?: boolean | null
           contact_info?: Json | null
           is_favorite?: boolean | null
+          ai_metadata?: Json | null
         }
         Update: {
           id?: string
@@ -83,6 +85,7 @@ export interface Database {
           remote?: boolean | null
           contact_info?: Json | null
           is_favorite?: boolean | null
+          ai_metadata?: Json | null
         }
       }
       application_status_history: {

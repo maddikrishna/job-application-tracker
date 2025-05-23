@@ -7,12 +7,12 @@ import { Briefcase, LineChart, Bell, Mail, Linkedin, Brain, Smartphone, Laptop, 
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="px-4 lg:px-6 h-16 flex items-center">
+      <header className="px-2 sm:px-4 lg:px-6 h-16 flex items-center w-full">
         <Link className="flex items-center justify-center" href="/">
           <Briefcase className="h-6 w-6 text-primary" />
           <span className="ml-2 text-xl font-bold">JobTrackr</span>
         </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
+        <nav className="ml-auto flex gap-2 sm:gap-4 md:gap-6">
           <Link className="text-sm font-medium hover:underline underline-offset-4" href="/features">
             Features
           </Link>
@@ -23,7 +23,7 @@ export default function LandingPage() {
             About
           </Link>
         </nav>
-        <div className="ml-4 flex items-center gap-2">
+        <div className="ml-2 flex items-center gap-1 sm:gap-2">
           <Link href="/login">
             <Button variant="outline" size="sm">
               Log In
@@ -34,10 +34,10 @@ export default function LandingPage() {
           </Link>
         </div>
       </header>
-      <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48">
-          <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
+      <main className="flex-1 w-full">
+        <section className="w-full py-8 sm:py-12 md:py-24 lg:py-32 xl:py-48">
+          <div className="container px-2 sm:px-4 md:px-6">
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 lg:gap-12 xl:grid-cols-2">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
                   <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
@@ -62,8 +62,8 @@ export default function LandingPage() {
                   </Link>
                 </div>
               </div>
-              <div className="flex items-center justify-center">
-                <div className="relative w-full h-[400px] bg-gradient-to-r from-primary/20 to-secondary/20 rounded-lg flex items-center justify-center">
+              <div className="flex items-center justify-center mt-8 lg:mt-0">
+                <div className="relative w-full h-64 sm:h-80 md:h-[400px] bg-gradient-to-r from-primary/20 to-secondary/20 rounded-lg flex items-center justify-center">
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Briefcase className="h-24 w-24 text-primary/40" />
                   </div>
@@ -90,8 +90,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted">
-          <div className="container px-4 md:px-6">
+        <section className="w-full py-8 sm:py-12 md:py-24 lg:py-32 bg-muted">
+          <div className="container px-2 sm:px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Key Features</h2>
@@ -100,7 +100,7 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
               <div className="flex flex-col items-center space-y-2 rounded-lg border p-6 shadow-sm">
                 <div className="p-2 bg-primary/10 rounded-full">
                   <Brain className="h-6 w-6 text-primary" />
@@ -158,8 +158,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-        <section className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container px-4 md:px-6">
+        <section className="w-full py-8 sm:py-12 md:py-24 lg:py-32">
+          <div className="container px-2 sm:px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
@@ -170,7 +170,7 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3 mt-8">
+            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:gap-8 md:grid-cols-3 mt-8">
               <div className="flex flex-col items-center space-y-2 rounded-lg border p-6 shadow-sm">
                 <Laptop className="h-12 w-12 text-primary mb-2" />
                 <h3 className="text-xl font-bold">Web</h3>
@@ -195,8 +195,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-muted">
-          <div className="container px-4 md:px-6">
+        <section className="w-full py-8 sm:py-12 md:py-24 lg:py-32 bg-muted">
+          <div className="container px-2 sm:px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
@@ -206,7 +206,7 @@ export default function LandingPage() {
                   Join thousands of job seekers who are tracking their applications effortlessly
                 </p>
               </div>
-              <div className="flex flex-col gap-2 min-[400px]:flex-row">
+              <div className="flex flex-col gap-2 min-[400px]:flex-row w-full items-center justify-center">
                 <Link href="/signup">
                   <Button size="lg" className="px-8">
                     Get Started for Free
@@ -217,7 +217,7 @@ export default function LandingPage() {
           </div>
         </section>
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
+      <footer className="flex flex-col gap-2 sm:flex-row py-4 sm:py-6 w-full shrink-0 items-center px-2 sm:px-4 md:px-6 border-t text-center">
         <p className="text-xs text-gray-500 dark:text-gray-400">© 2023 JobTrackr. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link className="text-xs hover:underline underline-offset-4" href="/terms">

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface DashboardNavProps {
   user: User
@@ -67,90 +68,96 @@ export default function DashboardNav({ user }: DashboardNavProps) {
   ]
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background">
-      <div className="container flex h-16 items-center justify-between py-4">
-        <div className="flex items-center gap-2">
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64 sm:max-w-sm">
-              <div className="flex items-center gap-2 pb-4 border-b mb-4">
-                <Briefcase className="h-6 w-6 text-primary" />
-                <span className="text-xl font-bold">JobTrackr</span>
-              </div>
-              <nav className="flex flex-col gap-2">
-                {navItems.map((item) => (
+    <TooltipProvider delayDuration={100}>
+      <header className="sticky top-0 z-40 border-b bg-background">
+        <div className="container mx-auto flex h-16 items-center justify-between py-4 px-2 sm:px-4">
+          <div className="flex items-center gap-2">
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="hidden sm:block md:hidden">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="hidden sm:block w-64 sm:max-w-sm p-0">
+                <div className="flex items-center gap-2 pb-4 border-b mb-4 px-4 pt-4">
+                  <Briefcase className="h-6 w-6 text-primary" />
+                  <span className="text-xl font-bold">JobTrackr</span>
+                </div>
+                <nav className="flex flex-col gap-2 px-4">
+                  {navItems.map((item) => (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href={item.href}
+                          onClick={() => setIsOpen(false)}
+                          className={`flex items-center justify-center px-3 py-2 rounded-md hover:bg-accent text-xl ${
+                            pathname === item.href ? "bg-accent text-primary" : "text-muted-foreground hover:text-primary"
+                          }`}
+                        >
+                          {item.icon}
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs px-2 py-1 rounded-md shadow-md">
+                        {item.name}
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </nav>
+              </SheetContent>
+            </Sheet>
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <Briefcase className="h-6 w-6 text-primary" />
+              <span className="text-xl font-bold hidden md:inline-block">JobTrackr</span>
+            </Link>
+          </div>
+          <nav className="hidden md:flex items-center gap-4 lg:gap-6">
+            {navItems.map((item) => (
+              <Tooltip key={item.href}>
+                <TooltipTrigger asChild>
                   <Link
-                    key={item.href}
                     href={item.href}
-                    onClick={() => setIsOpen(false)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent ${
-                      pathname === item.href ? "bg-accent" : ""
+                    className={`flex items-center justify-center text-xl px-2 py-1 rounded-md transition-colors duration-150 ${
+                      pathname === item.href ? "text-primary bg-accent" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {item.icon}
-                    {item.name}
                   </Link>
-                ))}
-              </nav>
-            </SheetContent>
-          </Sheet>
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Briefcase className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold hidden md:inline-block">JobTrackr</span>
-          </Link>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs px-2 py-1 rounded-md shadow-md">
+                  {item.name}
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </nav>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar>
+                    <AvatarFallback>{getInitials(user.email || "")}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/profile">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/settings">Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-        <nav className="hidden md:flex items-center gap-6">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-2 text-sm font-medium ${
-                pathname === item.href ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {item.icon}
-              {item.name}
-            </Link>
-          ))}
-        </nav>
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard/applications/new">
-            <Button size="sm" className="hidden md:flex">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Application
-            </Button>
-          </Link>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Avatar>
-                  <AvatarFallback>{getInitials(user.email || "")}</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/profile">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings">Settings</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-    </header>
+      </header>
+    </TooltipProvider>
   )
 }

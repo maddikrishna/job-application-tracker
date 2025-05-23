@@ -15,7 +15,7 @@ export default async function Settings() {
   const platformIntegrations = await getPlatformIntegrations()
 
   return (
-    <div className="container py-6">
+    <div className="container mx-auto py-6">
       <h1 className="text-3xl font-bold mb-6">Settings</h1>
       <SettingsPage
         user={session.user}

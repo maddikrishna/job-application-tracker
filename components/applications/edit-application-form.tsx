@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2 } from "lucide-react"
+import { CheckCircle2, Clock, Briefcase, Globe, Linkedin, Building2, Users, Mail, Star } from "lucide-react"
 
 interface EditApplicationFormProps {
   application: any
@@ -119,15 +120,15 @@ export default function EditApplicationForm({ application }: EditApplicationForm
             <div className="space-y-2">
               <Label htmlFor="status">Status *</Label>
               <Select value={formData.status} onValueChange={(value) => handleSelectChange("status", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="py-3 px-4 rounded-xl text-base font-semibold shadow-md border-2 border-primary/20 bg-background flex items-center gap-2">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="saved">Saved</SelectItem>
-                  <SelectItem value="applied">Applied</SelectItem>
-                  <SelectItem value="interview">Interview</SelectItem>
-                  <SelectItem value="offer">Offer</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectContent className="rounded-xl shadow-lg">
+                  <SelectItem value="saved" className="flex items-center gap-2 py-3 px-4 text-base">Saved</SelectItem>
+                  <SelectItem value="applied" className="flex items-center gap-2 py-3 px-4 text-base">Applied</SelectItem>
+                  <SelectItem value="interview" className="flex items-center gap-2 py-3 px-4 text-base">Interview</SelectItem>
+                  <SelectItem value="offer" className="flex items-center gap-2 py-3 px-4 text-base">Offer</SelectItem>
+                  <SelectItem value="rejected" className="flex items-center gap-2 py-3 px-4 text-base">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -135,17 +136,17 @@ export default function EditApplicationForm({ application }: EditApplicationForm
             <div className="space-y-2">
               <Label htmlFor="source">Source *</Label>
               <Select value={formData.source} onValueChange={(value) => handleSelectChange("source", value)}>
-                <SelectTrigger>
+                <SelectTrigger className="py-3 px-4 rounded-xl text-base font-semibold shadow-md border-2 border-primary/20 bg-background flex items-center gap-2">
                   <SelectValue placeholder="Select source" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Manual Entry</SelectItem>
-                  <SelectItem value="linkedin">LinkedIn</SelectItem>
-                  <SelectItem value="indeed">Indeed</SelectItem>
-                  <SelectItem value="glassdoor">Glassdoor</SelectItem>
-                  <SelectItem value="company-website">Company Website</SelectItem>
-                  <SelectItem value="referral">Referral</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                <SelectContent className="rounded-xl shadow-lg">
+                  <SelectItem value="manual" className="flex items-center gap-2 py-3 px-4 text-base">Manual Entry</SelectItem>
+                  <SelectItem value="linkedin" className="flex items-center gap-2 py-3 px-4 text-base">LinkedIn</SelectItem>
+                  <SelectItem value="indeed" className="flex items-center gap-2 py-3 px-4 text-base">Indeed</SelectItem>
+                  <SelectItem value="glassdoor" className="flex items-center gap-2 py-3 px-4 text-base">Glassdoor</SelectItem>
+                  <SelectItem value="company-website" className="flex items-center gap-2 py-3 px-4 text-base">Company Website</SelectItem>
+                  <SelectItem value="referral" className="flex items-center gap-2 py-3 px-4 text-base">Referral</SelectItem>
+                  <SelectItem value="other" className="flex items-center gap-2 py-3 px-4 text-base">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>

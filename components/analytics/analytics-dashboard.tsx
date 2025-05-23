@@ -19,6 +19,7 @@ import {
   Line,
   Legend,
 } from "recharts"
+import { PieChart as PieChartIcon, BarChart as BarChartIcon, Activity as TimelineIcon, Filter as FilterIcon } from "lucide-react"
 
 interface AnalyticsDashboardProps {
   applications: any[]
@@ -26,6 +27,7 @@ interface AnalyticsDashboardProps {
 
 export default function AnalyticsDashboard({ applications }: AnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState("all")
+  const [activeTab, setActiveTab] = useState("status")
 
   // Filter applications based on time range
   const filteredApplications = applications.filter((app) => {
@@ -123,17 +125,17 @@ export default function AnalyticsDashboard({ applications }: AnalyticsDashboardP
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Application Analytics</h2>
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-8 mt-6">
+        <h2 className="text-3xl font-extrabold mb-2">Application Analytics</h2>
         <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[220px] py-4 px-4 rounded-2xl text-lg font-semibold shadow-lg border-2 border-primary/20 bg-background flex items-center gap-3">
             <SelectValue placeholder="Select time range" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Time</SelectItem>
-            <SelectItem value="30days">Last 30 Days</SelectItem>
-            <SelectItem value="90days">Last 90 Days</SelectItem>
-            <SelectItem value="year">Last Year</SelectItem>
+          <SelectContent className="rounded-2xl shadow-xl">
+            <SelectItem value="all" className="flex items-center gap-3 py-4 px-4 text-lg">All Time</SelectItem>
+            <SelectItem value="30days" className="flex items-center gap-3 py-4 px-4 text-lg">Last 30 Days</SelectItem>
+            <SelectItem value="90days" className="flex items-center gap-3 py-4 px-4 text-lg">Last 90 Days</SelectItem>
+            <SelectItem value="year" className="flex items-center gap-3 py-4 px-4 text-lg">Last Year</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -182,8 +184,23 @@ export default function AnalyticsDashboard({ applications }: AnalyticsDashboardP
         </Card>
       </div>
 
-      <Tabs defaultValue="status" className="space-y-4">
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        {/* Mobile: Use Select for tab selection */}
+        <div className="block md:hidden mb-6">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full py-4 px-4 rounded-xl text-lg font-semibold shadow-md border-2 border-primary/20 bg-background flex items-center gap-2">
+              <SelectValue placeholder="Select view" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl shadow-lg">
+              <SelectItem value="status" className="flex items-center gap-2 py-3 px-4 text-base"><BarChartIcon className="h-5 w-5 mr-2 text-primary" />Status Distribution</SelectItem>
+              <SelectItem value="sources" className="flex items-center gap-2 py-3 px-4 text-base"><PieChartIcon className="h-5 w-5 mr-2 text-primary" />Application Sources</SelectItem>
+              <SelectItem value="timeline" className="flex items-center gap-2 py-3 px-4 text-base"><TimelineIcon className="h-5 w-5 mr-2 text-primary" />Timeline</SelectItem>
+              <SelectItem value="conversion" className="flex items-center gap-2 py-3 px-4 text-base"><FilterIcon className="h-5 w-5 mr-2 text-primary" />Conversion Funnel</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {/* Desktop: Use TabsList */}
+        <TabsList className="hidden md:inline-flex">
           <TabsTrigger value="status">Status Distribution</TabsTrigger>
           <TabsTrigger value="sources">Application Sources</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>

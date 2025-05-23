@@ -28,7 +28,7 @@ export default async function EditApplicationPage({ params }: EditApplicationPag
   }
 
   return (
-    <div className="container py-6">
+    <div className="container m-auto py-6">
       <h1 className="text-3xl font-bold mb-6">Edit Application</h1>
       <EditApplicationForm application={application} />
     </div>

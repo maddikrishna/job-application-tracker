@@ -11,12 +11,20 @@ import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 
+type Integration = {
+  id: string;
+  provider: string;
+  credentials?: { email?: string };
+  is_active: boolean;
+  last_sync: string | null;
+  sync_frequency?: string;
+};
+
 export default function EmailIntegrationSetup() {
   const { supabase } = useSupabase()
-  const [integrations, setIntegrations] = useState<any[]>([])
+  const [integrations, setIntegrations] = useState<Integration[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [syncFrequency, setSyncFrequency] = useState("hourly")
   const searchParams = useSearchParams()
 
   // Get error and success messages from URL
@@ -214,30 +222,31 @@ export default function EmailIntegrationSetup() {
                       <div className="flex items-center gap-2">
                         <Switch
                           checked={integration.is_active}
-                          onCheckedChange={(checked) => {
-                            const { error } = supabase
-                              .from("email_integrations")
-                              .update({ is_active: checked })
-                              .eq("id", integration.id)
-                              .then(() => {
-                                setIntegrations(
-                                  integrations.map((i) => (i.id === integration.id ? { ...i, is_active: checked } : i)),
-                                )
-                                toast({
-                                  title: checked ? "Integration activated" : "Integration paused",
-                                  description: checked
-                                    ? "Email tracking has been activated"
-                                    : "Email tracking has been paused",
-                                })
+                          onCheckedChange={async (checked) => {
+                            try {
+                              const { error } = await supabase
+                                .from("email_integrations")
+                                .update({ is_active: checked })
+                                .eq("id", integration.id)
+                              if (error) throw error
+                              setIntegrations(
+                                integrations.map((i) => (i.id === integration.id ? { ...i, is_active: checked } : i)),
+                              )
+                              toast({
+                                title: checked ? "Integration activated" : "Integration paused",
+                                description: checked
+                                  ? "Email tracking has been activated"
+                                  : "Email tracking has been paused",
                               })
-                              .catch((error) => {
-                                console.error("Error updating integration status:", error)
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to update integration status",
-                                  variant: "destructive",
-                                })
+                            } catch (error: unknown) {
+                              const err = error as Error
+                              console.error("Error updating integration status:", err)
+                              toast({
+                                title: "Error",
+                                description: "Failed to update integration status",
+                                variant: "destructive",
                               })
+                            }
                           }}
                         />
                         <Button

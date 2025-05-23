@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import type { SupabaseClient } from "@supabase/auth-helpers-nextjs"
 import type { Database } from "@/lib/database.types"
@@ -42,44 +42,41 @@ const createDummyClient = () => {
 export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const [client, setClient] = useState<SupabaseClient<Database> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const initialized = useRef(false)
 
   useEffect(() => {
-    // Initialize Supabase client
-    try {
-      console.log("Initializing Supabase client...")
-      const supabase = createClientComponentClient<Database>()
+    if (initialized.current) return
+    initialized.current = true
 
-      // Test if the client works by making a simple request
-      supabase.auth
-        .getSession()
-        .then(() => {
-          console.log("Supabase client initialized successfully")
-          setClient(supabase)
-        })
-        .catch((error) => {
-          console.error("Error testing Supabase client:", error)
-          console.log("Falling back to dummy client")
-          setClient(createDummyClient())
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
+    let unsub: (() => void) | undefined
 
-      // Set up auth state change listener
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(() => {
-        // Refresh the page on auth state change
-      })
+    async function init() {
+      try {
+        const supabase = createClientComponentClient<Database>()
+        // Only call getSession once, and don't retry rapidly on error
+        await supabase.auth.getSession()
+        setClient(supabase)
 
-      return () => {
-        subscription?.unsubscribe()
+        // Set up auth state change listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+            // Force a router refresh to update the UI state
+            window.location.reload()
+          }
+        })
+        unsub = () => subscription?.unsubscribe()
+      } catch (error) {
+        console.error("Error initializing Supabase client:", error)
+        setClient(createDummyClient())
+      } finally {
+        setIsLoading(false)
       }
-    } catch (error) {
-      console.error("Error initializing Supabase client:", error)
-      setClient(createDummyClient())
-      setIsLoading(false)
-      return () => {}
+    }
+
+    init()
+
+    return () => {
+      if (unsub) unsub()
     }
   }, [])
 

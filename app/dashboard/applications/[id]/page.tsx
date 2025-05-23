@@ -17,7 +17,7 @@ export default async function ApplicationDetailPage({ params }: ApplicationDetai
   }
 
   return (
-    <div className="container py-6">
+    <div className="container m-auto py-6">
       <ApplicationDetail application={application} statusHistory={statusHistory} />
     </div>
   )

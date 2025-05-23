@@ -397,15 +397,15 @@ export default function ApplicationDetail({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Select value={newStatus} onValueChange={setNewStatus}>
-                    <SelectTrigger>
+                    <SelectTrigger className="py-3 px-4 rounded-xl text-base font-semibold shadow-md border-2 border-primary/20 bg-background flex items-center gap-2">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="saved">Saved</SelectItem>
-                      <SelectItem value="applied">Applied</SelectItem>
-                      <SelectItem value="interview">Interview</SelectItem>
-                      <SelectItem value="offer">Offer</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectContent className="rounded-xl shadow-lg">
+                      <SelectItem value="saved" className="flex items-center gap-2 py-3 px-4 text-base">Saved</SelectItem>
+                      <SelectItem value="applied" className="flex items-center gap-2 py-3 px-4 text-base">Applied</SelectItem>
+                      <SelectItem value="interview" className="flex items-center gap-2 py-3 px-4 text-base">Interview</SelectItem>
+                      <SelectItem value="offer" className="flex items-center gap-2 py-3 px-4 text-base">Offer</SelectItem>
+                      <SelectItem value="rejected" className="flex items-center gap-2 py-3 px-4 text-base">Rejected</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
