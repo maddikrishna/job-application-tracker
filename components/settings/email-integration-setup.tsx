@@ -10,11 +10,17 @@ import { useSupabase } from "@/components/supabase-provider"
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 type Integration = {
   id: string;
   provider: string;
-  credentials?: { email?: string };
+  credentials?: {
+    email?: string;
+    access_token?: string;
+    refresh_token?: string;
+    [key: string]: any;
+  };
   is_active: boolean;
   last_sync: string | null;
   sync_frequency?: string;
@@ -25,6 +31,7 @@ export default function EmailIntegrationSetup() {
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [showReconnectModal, setShowReconnectModal] = useState(false)
   const searchParams = useSearchParams()
 
   // Get error and success messages from URL
@@ -57,16 +64,38 @@ export default function EmailIntegrationSetup() {
     fetchIntegrations()
   }, [supabase])
 
+  useEffect(() => {
+    if (error && details) {
+      try {
+        console.error("OAuth error details:", JSON.parse(details))
+      } catch {
+        console.error("OAuth error details:", details)
+      }
+    }
+  }, [error, details])
+
   const handleDisconnect = async (id: string) => {
     try {
+      // Find the integration to get the token
+      const integration = integrations.find((i) => i.id === id)
+      const token = integration?.credentials?.refresh_token || integration?.credentials?.access_token
+      if (token) {
+        try {
+          await fetch('https://oauth2.googleapis.com/revoke', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ token }),
+          })
+        } catch (revokeError) {
+          console.error('Failed to revoke Google token:', revokeError)
+        }
+      }
+      // Remove the integration from the database
       const { error } = await supabase.from("email_integrations").update({ is_active: false }).eq("id", id)
-
       if (error) throw error
-
       setIntegrations(
         integrations.map((integration) => (integration.id === id ? { ...integration, is_active: false } : integration)),
       )
-
       toast({
         title: "Integration disconnected",
         description: "Email integration has been disconnected",
@@ -101,16 +130,20 @@ export default function EmailIntegrationSetup() {
           title: "Email sync completed",
           description: `Processed ${data.processedCount} emails, found ${data.jobRelatedCount || 0} job-related emails`,
         })
-
         // Refresh integrations to update last_sync time
         const { data: updatedIntegrations, error } = await supabase
           .from("email_integrations")
           .select("*")
           .order("created_at", { ascending: false })
-
         if (!error) {
           setIntegrations(updatedIntegrations || [])
         }
+      } else if (data.error === "connection_failed") {
+        // Remove the integration from the database before showing the reconnect modal
+        await supabase.from("email_integrations").delete().eq("id", integrationId)
+        // Update UI
+        setIntegrations((prev) => prev.filter((i) => i.id !== integrationId))
+        setShowReconnectModal(true)
       } else {
         toast({
           title: "Sync failed",
@@ -180,11 +213,25 @@ export default function EmailIntegrationSetup() {
                 {error === "token_exchange_failed"
                   ? "Failed to authenticate with Google. Please try again."
                   : error === "invalid_state"
-                    ? "Security verification failed. Please try again."
-                    : error === "integration_storage_failed"
-                      ? "Failed to save integration. Please try again."
-                      : `An error occurred: ${error}`}
-                {details && <div className="mt-2 text-xs opacity-80">{details}</div>}
+                  ? "Security verification failed. Please try again."
+                  : error === "integration_storage_failed"
+                  ? "Failed to save integration. Please try again."
+                  : error === "no_code"
+                  ? "No authorization code received from Google. Please try again."
+                  : error === "userinfo_failed"
+                  ? "Failed to fetch your Google account info. Please try again."
+                  : error === "connection_failed"
+                  ? "Your email connection is no longer valid. Please reconnect."
+                  : "An error occurred: " + error}
+                {details && (
+                  <div className="mt-2 text-xs opacity-80">
+                    <span>Details: </span>
+                    <span>{details}</span>
+                  </div>
+                )}
+                <div className="mt-4">
+                  <Button onClick={() => { window.location.href = "/api/auth/gmail" }}>Reconnect</Button>
+                </div>
               </AlertDescription>
             </Alert>
           )}
@@ -337,6 +384,19 @@ export default function EmailIntegrationSetup() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={showReconnectModal} onOpenChange={setShowReconnectModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reconnect your email</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">Your email integration is not connected. Please reconnect to continue syncing your emails.</div>
+          <DialogFooter>
+            <Button onClick={() => { window.location.href = "/api/auth/gmail" }}>Reconnect</Button>
+            <Button variant="outline" onClick={() => setShowReconnectModal(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,9 +1,11 @@
+import { NextResponse, NextRequest } from "next/server"
+
 export const runtime = 'edge';
 
 // Google OAuth configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Basic validation
     if (!GOOGLE_CLIENT_ID) {
@@ -20,11 +22,17 @@ export async function GET() {
     const SCOPES = [
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/userinfo.email",
-      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/gmail.labels",
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://www.googleapis.com/auth/gmail.modify",
+      "https://www.googleapis.com/auth/gmail.compose",
     ]
 
-    // Use the v0 preview URL for testing
-    const redirectUri = "https://kzmje1g3tdu7zw4r1lps.lite.vusercontent.net/api/auth/gmail/callback"
+    // Dynamically determine redirectUri based on request
+    const protocol = request.headers.get("x-forwarded-proto") || "http"
+    const host = request.headers.get("host")
+    const redirectUri = `${protocol}://${host}/api/auth/gmail/callback`
+    console.log('[Google OAuth] Using redirectUri:', redirectUri)
 
     // Construct the Google OAuth authorization URL
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
@@ -35,9 +43,10 @@ export async function GET() {
     authUrl.searchParams.append("access_type", "offline")
     authUrl.searchParams.append("prompt", "consent")
     authUrl.searchParams.append("state", state)
+    authUrl.searchParams.append("include_granted_scopes", "true")
 
-    // Use basic Response instead of NextResponse
-    return Response.redirect(authUrl.toString(), 302)
+    // Use NextResponse for Edge compatibility
+    return NextResponse.redirect(authUrl.toString(), 302)
   } catch (error) {
     console.error("Error in Gmail OAuth route:", error)
     return new Response(JSON.stringify({ error: "An unexpected error occurred" }), {

@@ -279,7 +279,7 @@ export async function syncUserEmails(userId: string, integrationId: string, cook
     const connected = await provider.connect(integration.credentials)
     if (!connected) {
       console.error("Failed to connect to email provider")
-      throw new Error("Failed to connect to email provider")
+      return { success: false, error: "connection_failed" }
     }
 
     // Determine the since date based on last sync or use 5 days ago

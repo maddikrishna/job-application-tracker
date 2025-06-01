@@ -1,12 +1,11 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import type { Database } from "./database.types"
-import { cache } from "react"
 
-export const createServerSupabaseClient = cache(() => {
+export function createServerSupabaseClient() {
   const cookieStore = cookies()
   return createServerComponentClient<Database>({ cookies: () => cookieStore })
-})
+}
 
 export async function getSession() {
   const supabase = createServerSupabaseClient()
@@ -49,7 +48,7 @@ export async function getJobApplications() {
 export async function getJobApplicationById(id: string) {
   const supabase = createServerSupabaseClient()
   try {
-    const { data: application } = await supabase.from("job_applications").select("*").eq("id", id).single()
+    const { data: application } = await supabase.from("job_applications").select("*").eq("id", String(id)).single()
     return application
   } catch (error) {
     console.error("Error:", error)
@@ -63,7 +62,7 @@ export async function getApplicationStatusHistory(applicationId: string) {
     const { data: history } = await supabase
       .from("application_status_history")
       .select("*")
-      .eq("application_id", applicationId)
+      .eq("application_id", String(applicationId))
       .order("created_at", { ascending: false })
     return history || []
   } catch (error) {

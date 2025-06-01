@@ -1,16 +1,19 @@
 export const runtime = 'edge';
-import type { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 
 // Google OAuth configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://v0-job-application-tracker-drab.vercel.app"
 
 export async function GET(request: NextRequest) {
   console.log("🔍 [OAuth Callback] Starting callback processing")
-  console.log(`🔍 [OAuth Callback] APP_URL: ${APP_URL}`)
+  // Dynamically determine base URL from request
+  const protocol = request.headers.get("x-forwarded-proto") || "http"
+  const host = request.headers.get("host")
+  const baseUrl = `${protocol}://${host}`
+  console.log(`🔍 [OAuth Callback] baseUrl: ${baseUrl}`)
 
   try {
     const searchParams = request.nextUrl.searchParams
@@ -25,16 +28,18 @@ export async function GET(request: NextRequest) {
     // Check for errors in the OAuth response
     if (error) {
       console.error(`❌ [OAuth Callback] Error in OAuth response: ${error}`)
-      return Response.redirect(`${APP_URL}/dashboard/settings?error=${error}`, 302)
+      // Always redirect to app with error
+      return NextResponse.redirect(`${baseUrl}/dashboard/settings?error=${error}`, 302)
     }
 
     if (!code) {
       console.error("❌ [OAuth Callback] No authorization code received")
-      return Response.redirect(`${APP_URL}/dashboard/settings?error=no_code`, 302)
+      // Always redirect to app with error
+      return NextResponse.redirect(`${baseUrl}/dashboard/settings?error=no_code`, 302)
     }
 
-    // Use the actual deployed URL as the redirect URI
-    const redirectUri = "https://v0-job-application-tracker-drab.vercel.app/api/auth/gmail/callback"
+    // Dynamically determine redirectUri based on request
+    const redirectUri = `${protocol}://${host}/api/auth/gmail/callback`
     console.log(`🔍 [OAuth Callback] Using redirect URI: ${redirectUri}`)
 
     // Exchange the authorization code for access and refresh tokens
@@ -59,8 +64,9 @@ export async function GET(request: NextRequest) {
 
       if (!tokenResponse.ok) {
         console.error(`❌ [OAuth Callback] Error exchanging code for tokens: ${JSON.stringify(tokenData)}`)
-        return Response.redirect(
-          `${APP_URL}/dashboard/settings?error=token_exchange_failed&details=${encodeURIComponent(
+        // Always redirect to app with error and details
+        return NextResponse.redirect(
+          `${baseUrl}/dashboard/settings?error=token_exchange_failed&details=${encodeURIComponent(
             JSON.stringify(tokenData),
           )}`,
           302,
@@ -82,7 +88,8 @@ export async function GET(request: NextRequest) {
 
       if (!userInfoResponse.ok) {
         console.error(`❌ [OAuth Callback] Error getting user info: ${JSON.stringify(userInfo)}`)
-        return Response.redirect(`${APP_URL}/dashboard/settings?error=userinfo_failed`, 302)
+        // Always redirect to app with error
+        return NextResponse.redirect(`${baseUrl}/dashboard/settings?error=userinfo_failed`, 302)
       }
 
       console.log(`✅ [OAuth Callback] User info retrieved: ${userInfo.email}`)
@@ -94,50 +101,132 @@ export async function GET(request: NextRequest) {
 
       if (userError || !userData.user) {
         console.error(`❌ [OAuth Callback] Error getting user from Supabase: ${userError?.message || "No user found"}`)
-        return Response.redirect(`${APP_URL}/login?error=authentication_required`, 302)
+        // Always redirect to app with error
+        return NextResponse.redirect(`${baseUrl}/login?error=authentication_required`, 302)
       }
 
       console.log(`✅ [OAuth Callback] Supabase user retrieved: ${userData.user.id}`)
 
-      // Store the integration in the database
-      console.log("🔍 [OAuth Callback] Storing integration in database...")
-      const { error: integrationError } = await supabase.from("email_integrations").insert({
-        user_id: userData.user.id,
-        provider: "gmail",
-        credentials: {
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
-          token_type: tokenData.token_type,
-          expires_in: tokenData.expires_in,
-          id_token: tokenData.id_token,
-          email: userInfo.email,
-          issued_at: Math.floor(Date.now() / 1000),
-        },
-        is_active: true,
-        sync_frequency: "hourly",
-      })
+      // --- PRODUCTION GRADE: Remove old Gmail integrations and revoke token ---
+      // Find existing Gmail integrations for this user (case-insensitive)
+      const { data: oldIntegrations, error: oldIntegrationsError } = await supabase
+        .from("email_integrations")
+        .select("id, credentials")
+        .ilike("provider", "gmail")
+        .eq("user_id", userData.user.id)
+
+      if (oldIntegrationsError) {
+        console.error("Error fetching old Gmail integrations:", oldIntegrationsError)
+      }
+
+      console.log(`[Cleanup] Found ${oldIntegrations?.length || 0} old Gmail integrations for user ${userData.user.id}`)
+      let integrationIdToUpdate = null
+      if (oldIntegrations && oldIntegrations.length > 0) {
+        for (const old of oldIntegrations) {
+          console.log(`[Cleanup] Old integration ID: ${old.id}, credentials:`, old.credentials)
+          // Try to revoke the old token if present
+          const token = old.credentials?.refresh_token || old.credentials?.access_token
+          if (token) {
+            try {
+              const revokeRes = await fetch('https://oauth2.googleapis.com/revoke', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ token }),
+              })
+              if (revokeRes.ok) {
+                console.log(`✅ Revoked old Gmail token for integration ${old.id}`)
+              } else {
+                console.warn(`⚠️ Failed to revoke token for integration ${old.id}`)
+              }
+            } catch (revokeError) {
+              console.error(`Error revoking token for integration ${old.id}:`, revokeError)
+            }
+          } else {
+            console.warn(`[Cleanup] No token found to revoke for integration ${old.id}`)
+          }
+          // Instead of deleting, mark for update
+          if (!integrationIdToUpdate) integrationIdToUpdate = old.id
+          else {
+            // Delete any extras
+            const { error: deleteError } = await supabase
+              .from("email_integrations")
+              .delete()
+              .eq("id", old.id)
+            if (deleteError) {
+              console.error(`[Cleanup] Error deleting old integration ${old.id}:`, deleteError)
+            } else {
+              console.log(`[Cleanup] ✅ Deleted extra Gmail integration ${old.id}`)
+            }
+          }
+        }
+      }
+      // --- END PRODUCTION GRADE CLEANUP ---
+
+      // Store or update the integration in the database
+      console.log("🔍 [OAuth Callback] Storing or updating integration in database...")
+      let integrationError = null
+      if (integrationIdToUpdate) {
+        // Update existing integration
+        const { error } = await supabase.from("email_integrations").update({
+          credentials: {
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token,
+            token_type: tokenData.token_type,
+            expires_in: tokenData.expires_in,
+            id_token: tokenData.id_token,
+            email: userInfo.email,
+            issued_at: Math.floor(Date.now() / 1000),
+          },
+          is_active: true,
+          sync_frequency: "hourly",
+        }).eq("id", integrationIdToUpdate)
+        integrationError = error
+        console.log(`[OAuth Callback] Updated existing integration ${integrationIdToUpdate}`)
+      } else {
+        // Insert new integration
+        const { error } = await supabase.from("email_integrations").insert({
+          user_id: userData.user.id,
+          provider: "gmail",
+          credentials: {
+            access_token: tokenData.access_token,
+            refresh_token: tokenData.refresh_token,
+            token_type: tokenData.token_type,
+            expires_in: tokenData.expires_in,
+            id_token: tokenData.id_token,
+            email: userInfo.email,
+            issued_at: Math.floor(Date.now() / 1000),
+          },
+          is_active: true,
+          sync_frequency: "hourly",
+        })
+        integrationError = error
+        console.log(`[OAuth Callback] Inserted new integration for user ${userData.user.id}`)
+      }
 
       if (integrationError) {
         console.error(`❌ [OAuth Callback] Error storing integration: ${integrationError.message}`)
-        return Response.redirect(`${APP_URL}/dashboard/settings?error=integration_storage_failed`, 302)
+        // Always redirect to app with error
+        return NextResponse.redirect(`${baseUrl}/dashboard/settings?error=integration_storage_failed`, 302)
       }
 
       console.log("✅ [OAuth Callback] Integration stored successfully")
 
       // Redirect back to the settings page with success message
-      const redirectUrl = `${APP_URL}/dashboard/settings?tab=email-setup&success=gmail_connected`
+      const redirectUrl = `${baseUrl}/dashboard/settings?tab=email-setup&success=gmail_connected`
       console.log(`🔍 [OAuth Callback] Redirecting to: ${redirectUrl}`)
 
-      return Response.redirect(redirectUrl, 302)
+      return NextResponse.redirect(redirectUrl, 302)
     } catch (error) {
       console.error(`❌ [OAuth Callback] Error in Gmail OAuth callback: ${error}`)
-      return Response.redirect(
-        `${APP_URL}/dashboard/settings?error=unexpected_error&details=${encodeURIComponent(String(error))}`,
+      // Always redirect to app with error and details
+      return NextResponse.redirect(
+        `${baseUrl}/dashboard/settings?error=unexpected_error&details=${encodeURIComponent(String(error))}`,
         302,
       )
     }
   } catch (error) {
     console.error(`❌ [OAuth Callback] Unhandled error in callback route: ${error}`)
-    return Response.redirect(`${APP_URL}/dashboard/settings?error=unhandled_error`, 302)
+    // Always redirect to app with error
+    return NextResponse.redirect(`${baseUrl}/dashboard/settings?error=unhandled_error`, 302)
   }
 }
